@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../widget/custom_textfield.dart';
 import '../theme/app_theme.dart';
+import 'package:nextdish_app/screens/home_page.dart';
+import 'package:nextdish_app/screens/home_complex_page.dart';
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
@@ -97,22 +99,34 @@ class LoginScreen extends StatelessWidget {
 
                       // Gradient Button Login
                       GestureDetector(
-                        onTap: () {},
+                        onTap: () {
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const HomeComplexPage(),
+                            ),
+                          );
+                        },
                         child: Container(
                           width: double.infinity,
                           height: 52,
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(30),
                             gradient: const LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [Color(0xFF7AD9A6), Color(0xFF63B685)],
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                              colors: [
+                                Color(
+                                  0xFF4CAF50,
+                                ), // Hijau yang sama dengan Home Page
+                                Color(0xFF1B5E20), // Hijau tua
+                              ],
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black12,
-                                blurRadius: 8,
-                                offset: Offset(0, 4),
+                                color: const Color(0xFF1B5E20).withOpacity(0.3),
+                                blurRadius: 10,
+                                offset: const Offset(0, 5),
                               ),
                             ],
                           ),
@@ -122,12 +136,12 @@ class LoginScreen extends StatelessWidget {
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 18,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.1,
                             ),
                           ),
                         ),
                       ),
-
                       const SizedBox(height: 24),
 
                       // Divider
@@ -148,11 +162,9 @@ class LoginScreen extends StatelessWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          _socialButton(
-                            "../../assets/images/icons/facebook.png",
-                          ),
+                          _socialButton("assets/images/icons/facebook.png"),
                           const SizedBox(width: 16),
-                          _socialButton("../../assets/images/icons/google.png"),
+                          _socialButton("assets/images/icons/google.png"),
                         ],
                       ),
 

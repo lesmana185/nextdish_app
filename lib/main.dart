@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:nextdish_app/screens/splash_screen.dart';
 import 'theme/app_theme.dart';
 import 'screens/welcome_screen.dart';
 
@@ -14,7 +15,7 @@ class NextDishApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      home: const WelcomeScreen(), // 👈 START DI SINI
+      home: const SplashScreen(), // 👈 START DI SINI
     );
   }
 }

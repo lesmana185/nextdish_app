@@ -43,7 +43,7 @@ class WelcomeScreen extends StatelessWidget {
               // Illustration
               Expanded(
                 child: Image.asset(
-                  "../../assets/images/illustrasi/welcome.png",
+                  "assets/images/illustrasi/welcome.png",
                   fit: BoxFit.contain,
                 ),
               ),

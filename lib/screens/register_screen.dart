@@ -128,11 +128,9 @@ class RegisterScreen extends StatelessWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          _socialButton(
-                            "../../assets/images/icons/facebook.png",
-                          ),
+                          _socialButton("assets/images/icons/facebook.png"),
                           const SizedBox(width: 16),
-                          _socialButton("../../assets/images/icons/google.png"),
+                          _socialButton("assets/images/icons/google.png"),
                         ],
                       ),
 
