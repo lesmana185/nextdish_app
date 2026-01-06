@@ -66,6 +66,10 @@ flutter:
   - assets/images/illustrasi/
   - assets/images/home/
   - assets/images/dapur/
+  - assets/images/ingredients/
+  - assets/images/resep/
+  - assets/images/rekomendasi/
+
 
   fonts:
     - family: Poppins

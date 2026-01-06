@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import 'mykitchen_page.dart';
+import 'search_loading_page.dart';
+import 'chat_ai_page.dart';
+import 'cooking_mode_intro_page.dart';
+import 'comunity_page.dart';
+import 'profile_page.dart';
 
 class HomeComplexPage extends StatelessWidget {
   const HomeComplexPage({super.key});
@@ -13,7 +18,7 @@ class HomeComplexPage extends StatelessWidget {
         children: [
           // 1. MAIN CONTENT (Scrollable)
           Padding(
-            padding: const EdgeInsets.only(bottom: 90), // Ruang untuk Nav Bar
+            padding: const EdgeInsets.only(bottom: 90),
             child: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -25,12 +30,12 @@ class HomeComplexPage extends StatelessWidget {
 
                   const SizedBox(height: 20),
 
-                  // HERO BANNER (Resep Favorit)
+                  // HERO BANNER
                   _buildHeroBanner(),
 
                   const SizedBox(height: 20),
 
-                  // INVENTORY SUMMARY (12 Bahan)
+                  // INVENTORY SUMMARY
                   _buildInventorySummary(),
 
                   const SizedBox(height: 24),
@@ -49,7 +54,7 @@ class HomeComplexPage extends StatelessWidget {
                   const SizedBox(height: 12),
 
                   // GRID BUTTONS
-                  _buildQuickActions(),
+                  _buildQuickActions(context),
 
                   const SizedBox(height: 24),
 
@@ -66,12 +71,12 @@ class HomeComplexPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
 
-                  // HORIZONTAL LIST (FOOD CARDS)
+                  // HORIZONTAL LIST
                   _buildRecommendationList(),
 
                   const SizedBox(height: 24),
 
-                  // WARNING ALERT (Susu Kedaluwarsa)
+                  // WARNING ALERT
                   _buildExpiryAlert(),
 
                   const SizedBox(height: 16),
@@ -79,14 +84,26 @@ class HomeComplexPage extends StatelessWidget {
                   // WASTE IMPACT
                   _buildWasteImpact(),
 
-                  const SizedBox(height: 40), // Bottom spacing
+                  const SizedBox(height: 40),
                 ],
               ),
             ),
           ),
 
           // 2. CHAT AI FLOATING BUTTON
-          Positioned(right: 20, bottom: 110, child: _buildChatAIButton()),
+          Positioned(
+            right: 20,
+            bottom: 110,
+            child: GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const ChatAIPage()),
+                );
+              },
+              child: _buildChatAIButton(),
+            ),
+          ),
 
           // 3. CUSTOM BOTTOM NAVIGATION BAR
           _buildCustomBottomNavBar(context),
@@ -104,9 +121,7 @@ class HomeComplexPage extends StatelessWidget {
         children: [
           const CircleAvatar(
             radius: 24,
-            backgroundImage: AssetImage(
-              'assets/images/home/profile.png',
-            ), // Ganti sesuai aset
+            backgroundImage: AssetImage('assets/images/home/profile.png'),
             backgroundColor: Colors.green,
           ),
           const SizedBox(width: 12),
@@ -136,10 +151,7 @@ class HomeComplexPage extends StatelessWidget {
           const Spacer(),
           Column(
             children: [
-              Image.asset(
-                'assets/images/home/logosmall.png',
-                height: 30,
-              ), // Ganti sesuai aset
+              Image.asset('assets/images/home/logosmall.png', height: 30),
               const Text(
                 "NextDish",
                 style: TextStyle(
@@ -159,9 +171,8 @@ class HomeComplexPage extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
       height: 160,
-      // 1. INI PEMBUNGKUS HIJAUNYA
       decoration: BoxDecoration(
-        color: const Color(0xFF63B685), // Warna Hijau Utama
+        color: const Color(0xFF63B685),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
@@ -171,25 +182,20 @@ class HomeComplexPage extends StatelessWidget {
           ),
         ],
       ),
-      // ClipRRect memastikan anak-anak (gambar) tidak keluar dari lengkungan hijau
       child: ClipRRect(
         borderRadius: BorderRadius.circular(20),
         child: Stack(
           children: [
-            // 2. GAMBAR NASI GORENG (Di Sebelah Kanan)
             Positioned(
-              right: -20, // Geser sedikit ke kanan agar terlihat artistik
+              right: -20,
               top: 0,
               bottom: 0,
-              width:
-                  180, // Batasi lebar gambar agar tidak menutupi seluruh hijau
+              width: 180,
               child: Image.asset(
-                'assets/images/home/bannerfood.png', // Pastikan ini gambar PNG transparan lebih bagus
+                'assets/images/home/bannerfood.png',
                 fit: BoxFit.cover,
               ),
             ),
-
-            // 3. TEKS & KONTEN (Di Sebelah Kiri - Di atas gambar)
             Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
@@ -201,12 +207,10 @@ class HomeComplexPage extends StatelessWidget {
                       color: Colors.white,
                       fontSize: 22,
                       fontWeight: FontWeight.w800,
-                      height: 1.1, // Jarak antar baris rapat
+                      height: 1.1,
                     ),
                   ),
                   const SizedBox(height: 8),
-
-                  // Label Nama Makanan
                   Row(
                     children: [
                       const Icon(
@@ -225,23 +229,20 @@ class HomeComplexPage extends StatelessWidget {
                       ),
                     ],
                   ),
-
                   const Spacer(),
-
-                  // Tombol Lihat Detail
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 14,
                       vertical: 8,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.white, // Tombol putih kontras
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: const Text(
                       "Lihat Detail",
                       style: TextStyle(
-                        color: Color(0xFF63B685), // Teks hijau
+                        color: Color(0xFF63B685),
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
                       ),
@@ -250,8 +251,6 @@ class HomeComplexPage extends StatelessWidget {
                 ],
               ),
             ),
-
-            // 4. TITIK-TITIK (Pagination Dots)
             Positioned(
               bottom: 15,
               right: 20,
@@ -282,15 +281,12 @@ class HomeComplexPage extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 20),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFE8F5E9), // Light Green
+        color: const Color(0xFFE8F5E9),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         children: [
-          Image.asset(
-            'assets/images/home/iventoryicon.png',
-            height: 60,
-          ), // Ganti aset
+          Image.asset('assets/images/home/iventoryicon.png', height: 60),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -327,7 +323,7 @@ class HomeComplexPage extends StatelessWidget {
     );
   }
 
-  Widget _buildQuickActions() {
+  Widget _buildQuickActions(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
@@ -339,6 +335,14 @@ class HomeComplexPage extends StatelessWidget {
                   "Cari Resep\nDari Bahan",
                   const Color(0xFFFFCC80),
                   'assets/images/home/searchlogo.png',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const SearchLoadingPage(),
+                      ),
+                    );
+                  },
                 ),
               ),
               const SizedBox(width: 12),
@@ -347,6 +351,14 @@ class HomeComplexPage extends StatelessWidget {
                   "Mode Masak",
                   const Color(0xFF90CAF9),
                   'assets/images/home/miclogo.png',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const CookingModeIntroPage(),
+                      ),
+                    );
+                  },
                 ),
               ),
             ],
@@ -376,41 +388,48 @@ class HomeComplexPage extends StatelessWidget {
     );
   }
 
-  Widget _actionButton(String title, Color color, String iconPath) {
-    return Container(
-      height: 70,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color:
-            color, // Menggunakan warna flat dulu, bisa diganti gradient jika perlu
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            backgroundColor: Colors.white.withOpacity(0.5),
-            radius: 20,
-            child: Image.asset(iconPath, width: 20), // Ganti Aset
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              title,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
-                color: Colors.white,
+  Widget _actionButton(
+    String title,
+    Color color,
+    String iconPath, {
+    VoidCallback? onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 70,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              backgroundColor: Colors.white.withOpacity(0.5),
+              radius: 20,
+              child: Image.asset(iconPath, width: 20),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                  color: Colors.white,
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -451,17 +470,13 @@ class HomeComplexPage extends StatelessWidget {
       margin: const EdgeInsets.only(right: 16, bottom: 10),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        image: DecorationImage(
-          image: AssetImage(imgPath), // Ganti aset
-          fit: BoxFit.cover,
-        ),
+        image: DecorationImage(image: AssetImage(imgPath), fit: BoxFit.cover),
         boxShadow: [
           BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(2, 4)),
         ],
       ),
       child: Stack(
         children: [
-          // Gradient Overlay biar teks terbaca
           Positioned(
             bottom: 0,
             left: 0,
@@ -550,7 +565,7 @@ class HomeComplexPage extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 20),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF3E0), // Orange Muda
+        color: const Color(0xFFFFF3E0),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.orange.shade200),
       ),
@@ -594,8 +609,6 @@ class HomeComplexPage extends StatelessWidget {
     );
   }
 
-  // --- REUSED WIDGETS (Sama seperti sebelumnya) ---
-
   Widget _buildChatAIButton() {
     return Container(
       height: 70,
@@ -609,10 +622,7 @@ class HomeComplexPage extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Image.asset(
-            'assets/images/home/logochat.png',
-            height: 30,
-          ), // Ganti aset
+          Image.asset('assets/images/home/logochat.png', height: 30),
           const Text(
             "Chat AI",
             style: TextStyle(
@@ -627,7 +637,6 @@ class HomeComplexPage extends StatelessWidget {
   }
 
   Widget _buildCustomBottomNavBar(BuildContext context) {
-    // Tambahkan parameter context
     return SizedBox(
       height: 100,
       child: Stack(
@@ -645,72 +654,97 @@ class HomeComplexPage extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                // 1. HOME (Aktif)
                 _navItem(Icons.home, "Home", true),
-
-                // 2. DAPUR SAYA (Sekarang bisa diklik)
                 GestureDetector(
                   onTap: () {
                     Navigator.pushReplacement(
                       context,
                       PageRouteBuilder(
                         pageBuilder: (_, __, ___) => const MyKitchenPage(),
-                        transitionDuration: Duration.zero, // Transisi instan
+                        transitionDuration: Duration.zero,
                       ),
                     );
                   },
                   child: _navItem(Icons.shopping_basket, "Dapur Saya", false),
                 ),
+                const SizedBox(width: 60),
+                GestureDetector(
+                  onTap: () {
+                    Navigator.pushReplacement(
+                      context,
+                      PageRouteBuilder(
+                        pageBuilder: (_, __, ___) => const CommunityPage(),
+                        transitionDuration: Duration.zero,
+                      ),
+                    );
+                  },
+                  child: _navItem(Icons.chat_bubble, "Komunitas", false),
+                ),
 
-                const SizedBox(width: 60), // Spasi untuk tombol tengah
-                // 3. KOMUNITAS
-                _navItem(Icons.chat_bubble, "Komunitas", false),
-
-                // 4. PROFIL
-                _navItem(Icons.person, "Profil", false),
+                // --- 2. UPDATE ICON PROFIL AGAR BISA DIKLIK ---
+                GestureDetector(
+                  onTap: () {
+                    Navigator.pushReplacement(
+                      context,
+                      PageRouteBuilder(
+                        pageBuilder: (_, __, ___) => const ProfilePage(),
+                        transitionDuration: Duration.zero,
+                      ),
+                    );
+                  },
+                  child: _navItem(Icons.person, "Profil", false),
+                ),
               ],
             ),
           ),
-
-          // TOMBOL TENGAH (Cari Resep)
           Positioned(
             top: 0,
-            child: Container(
-              width: 75,
-              height: 75,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black12,
-                    blurRadius: 10,
-                    offset: const Offset(0, -2),
+            child: GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const SearchLoadingPage(),
                   ),
-                ],
-              ),
-              padding: const EdgeInsets.all(5),
+                );
+              },
               child: Container(
-                decoration: const BoxDecoration(
-                  color: Color(0xFF63B685),
+                width: 75,
+                height: 75,
+                decoration: BoxDecoration(
+                  color: Colors.white,
                   shape: BoxShape.circle,
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Image.asset(
-                      'assets/images/home/logosmall.png', // Pastikan aset ini benar
-                      height: 30,
-                    ),
-                    const Text(
-                      "Cari resep",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 8,
-                        fontWeight: FontWeight.bold,
-                      ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 10,
+                      offset: const Offset(0, -2),
                     ),
                   ],
+                ),
+                padding: const EdgeInsets.all(5),
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF63B685),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Image.asset(
+                        'assets/images/home/logosmall.png',
+                        height: 30,
+                      ),
+                      const Text(
+                        "Cari resep",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 8,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
