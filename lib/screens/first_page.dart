@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'welcome_screen.dart'; // Pastikan file ini ada
+import 'splash_screen.dart'; // Pastikan file ini ada
 
 class FirstPage extends StatelessWidget {
   const FirstPage({super.key});
@@ -79,7 +79,7 @@ class FirstPage extends StatelessWidget {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => const WelcomeScreen(),
+                            builder: (_) => const SplashScreen(),
                           ),
                         );
                       },

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'home_complex_page.dart';
-import 'recipe_detail_page.dart'; // Pastikan file ini ada (dari langkah sebelumnya)
+import 'recipe_detail_page.dart';
 
 // Model Data Resep
 class Recipe {
@@ -28,7 +28,10 @@ class RecommendationPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // DATA DUMMY (Path gambar disesuaikan dengan kode kamu)
+    // Ambil padding bawah aman (Safe Area) dari HP
+    final double bottomPadding = MediaQuery.of(context).padding.bottom;
+
+    // DATA DUMMY
     final List<Recipe> recipes = [
       Recipe(
         name: "Nasi Liwet",
@@ -60,8 +63,7 @@ class RecommendationPage extends StatelessWidget {
         statusText: "Semua Bahan Tersedia",
         time: "20 Menit",
         calories: "440 kkal",
-        imagePath:
-            "assets/images/rekomendasi/nasigoreng.jpg", // Ganti jika ada gambar spesifik
+        imagePath: "assets/images/rekomendasi/nasigoreng.jpg",
       ),
     ];
 
@@ -80,7 +82,6 @@ class RecommendationPage extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
                   children: [
-                    // Pastikan path logo ini benar
                     Image.asset(
                       'assets/images/home/logosmall.png',
                       height: 40,
@@ -98,7 +99,6 @@ class RecommendationPage extends StatelessWidget {
                     const SizedBox(height: 10),
                     Row(
                       children: [
-                        // Tombol Back
                         GestureDetector(
                           onTap: () => Navigator.pop(context),
                           child: Container(
@@ -138,10 +138,13 @@ class RecommendationPage extends StatelessWidget {
               // LIST RESEP
               Expanded(
                 child: ListView.builder(
-                  padding: const EdgeInsets.only(bottom: 120, top: 10),
+                  // Tambahkan padding bawah lebih besar agar list paling bawah tidak ketutup navbar
+                  padding: EdgeInsets.only(
+                    bottom: 120 + bottomPadding,
+                    top: 10,
+                  ),
                   itemCount: recipes.length,
                   itemBuilder: (context, index) {
-                    // Panggil fungsi pembangun kartu
                     return _buildRecipeCard(context, recipes[index]);
                   },
                 ),
@@ -149,14 +152,14 @@ class RecommendationPage extends StatelessWidget {
             ],
           ),
 
-          // NAVIGASI BAWAH
+          // NAVIGASI BAWAH (Sudah diperbaiki Safe Area-nya)
           _buildCustomBottomNavBar(context),
         ],
       ),
     );
   }
 
-  // WIDGET KARTU RESEP
+  // WIDGET KARTU RESEP (DIPERBAIKI TINGGINYA)
   Widget _buildRecipeCard(BuildContext context, Recipe recipe) {
     Color badgeColor;
     if (recipe.status == 'Tersedia') {
@@ -167,21 +170,9 @@ class RecommendationPage extends StatelessWidget {
       badgeColor = const Color(0xFF757575);
     }
 
-    // Fungsi Navigasi (Dipakai di dua tempat: Tombol & Teks)
-    void navigateToDetail() {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => RecipeDetailPage(
-            recipeName: recipe.name,
-            imagePath: recipe.imagePath,
-          ),
-        ),
-      );
-    }
-
     return Container(
-      height: 160,
+      // PERBAIKAN 1: Tinggi dinaikkan dari 160 ke 180 agar tidak overflow
+      height: 180,
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Stack(
         clipBehavior: Clip.none,
@@ -190,7 +181,8 @@ class RecommendationPage extends StatelessWidget {
           // 1. KOTAK PUTIH (CONTENT)
           Container(
             margin: const EdgeInsets.only(right: 40),
-            padding: const EdgeInsets.fromLTRB(20, 16, 60, 16),
+            // Padding vertikal dikurangi sedikit agar muat
+            padding: const EdgeInsets.fromLTRB(20, 12, 60, 12),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(24),
@@ -213,6 +205,8 @@ class RecommendationPage extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                     color: Colors.black87,
                   ),
+                  maxLines: 1, // Cegah judul terlalu panjang turun ke bawah
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 6),
 
@@ -270,10 +264,18 @@ class RecommendationPage extends StatelessWidget {
                 // TOMBOL AKSI
                 Row(
                   children: [
-                    // TOMBOL 1: Mulai Masak (Sekarang sudah bisa diklik!)
                     ElevatedButton(
-                      onPressed:
-                          navigateToDetail, // <--- Panggil fungsi navigasi
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => RecipeDetailPage(
+                              recipeName: recipe.name,
+                              imagePath: recipe.imagePath,
+                            ),
+                          ),
+                        );
+                      },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF42A5F5),
                         minimumSize: const Size(0, 30),
@@ -289,10 +291,18 @@ class RecommendationPage extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 10),
-
-                    // TOMBOL 2: Lihat Detail
                     GestureDetector(
-                      onTap: navigateToDetail, // <--- Panggil fungsi navigasi
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => RecipeDetailPage(
+                              recipeName: recipe.name,
+                              imagePath: recipe.imagePath,
+                            ),
+                          ),
+                        );
+                      },
                       child: const Text(
                         "Lihat Detail",
                         style: TextStyle(
@@ -312,7 +322,12 @@ class RecommendationPage extends StatelessWidget {
           // 2. GAMBAR BULAT
           Positioned(
             right: 0,
+            // Sesuaikan posisi gambar agar tetap di tengah karena tinggi kartu berubah
+            top: -10,
+            bottom: -10,
             child: Container(
+              // Pastikan lebar fix agar tetap bulat
+              width: 150,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(color: Colors.white, width: 4),
@@ -336,15 +351,23 @@ class RecommendationPage extends StatelessWidget {
     );
   }
 
-  // --- NAV BAR ---
+  // --- NAV BAR (DIPERBAIKI SAFE AREA) ---
   Widget _buildCustomBottomNavBar(BuildContext context) {
+    // Ambil tinggi safe area bawah (area gesture bar/tombol)
+    final double safeAreaBottom = MediaQuery.of(context).padding.bottom;
+
     return SizedBox(
-      height: 100,
+      // Tinggi total navbar ditambah safe area
+      height: 100 + safeAreaBottom,
       child: Stack(
         alignment: Alignment.bottomCenter,
         children: [
+          // Background Hijau
           Container(
-            height: 70,
+            height: 70 + safeAreaBottom, // Tambah tinggi hijau ke bawah
+            padding: EdgeInsets.only(
+              bottom: safeAreaBottom,
+            ), // Dorong ikon ke atas
             decoration: const BoxDecoration(
               color: Color(0xFF63B685),
               borderRadius: BorderRadius.only(
@@ -369,7 +392,10 @@ class RecommendationPage extends StatelessWidget {
               ],
             ),
           ),
+
+          // Tombol Tengah (Cari Resep)
           Positioned(
+            // Sesuaikan posisi tombol tengah
             top: 0,
             child: Container(
               width: 75,

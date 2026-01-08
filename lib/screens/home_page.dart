@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'mykitchen_page.dart'; // Import Dapur
+import 'search_loading_page.dart'; // Import Search
+import 'chat_ai_page.dart'; // Import Chat AI
+import 'comunity_page.dart'; // Import Komunitas
+import 'profile_page.dart'; // Import Profil
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -14,13 +19,12 @@ class HomePage extends StatelessWidget {
         alignment: Alignment.bottomCenter,
         children: [
           // 1. KONTEN UTAMA (Scrollable)
-          // Kita kasih padding bawah yang besar agar konten paling bawah tidak tertutup Nav Bar
           Padding(
             padding: const EdgeInsets.only(bottom: 100),
             child: SingleChildScrollView(
               child: Column(
                 children: [
-                  const SizedBox(height: 50), // Spasi untuk Status Bar
+                  const SizedBox(height: 50),
                   // --- HEADER ---
                   _buildHeader(),
 
@@ -34,23 +38,29 @@ class HomePage extends StatelessWidget {
                   // --- 3 STEPS CARD ---
                   _buildStepsCard(),
 
-                  // Spacer tambahan agar scroll lebih nyaman
                   const SizedBox(height: 40),
                 ],
               ),
             ),
           ),
 
-          // 2. CHAT AI FLOATING BUTTON
-          // Posisi di kanan bawah, sedikit di atas Nav Bar
+          // 2. CHAT AI FLOATING BUTTON (DIHUBUNGKAN)
           Positioned(
             right: 20,
-            bottom: 100, // Di atas Nav Bar
-            child: _buildChatAIButton(),
+            bottom: 100,
+            child: GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const ChatAIPage()),
+                );
+              },
+              child: _buildChatAIButton(),
+            ),
           ),
 
-          // 3. CUSTOM BOTTOM NAVIGATION BAR
-          _buildCustomBottomNavBar(),
+          // 3. CUSTOM BOTTOM NAVIGATION BAR (DIHUBUNGKAN)
+          _buildCustomBottomNavBar(context),
         ],
       ),
     );
@@ -120,7 +130,6 @@ class HomePage extends StatelessWidget {
   Widget _buildEmptyStateSection(BuildContext context) {
     return Column(
       children: [
-        // Gambar Kulkas
         Image.asset(
           'assets/images/home/kulkas.png',
           height: 200,
@@ -151,38 +160,37 @@ class HomePage extends StatelessWidget {
 
         const SizedBox(height: 24),
 
-        // Tombol Masuk ke Dapur
-        Container(
-          width: 250,
-          height: 50,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            gradient: const LinearGradient(
-              colors: [Color(0xFF66BB6A), Color(0xFF2E7D32)], // Gradasi Hijau
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.green.withOpacity(0.4),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: () {
-                print("Masuk dapur clicked");
-              },
+        // Tombol Masuk ke Dapur (DIHUBUNGKAN KE MY KITCHEN)
+        GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const MyKitchenPage()),
+            );
+          },
+          child: Container(
+            width: 250,
+            height: 50,
+            decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
-              child: const Center(
-                child: Text(
-                  "Masuk ke Dapur",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
+              gradient: const LinearGradient(
+                colors: [Color(0xFF66BB6A), Color(0xFF2E7D32)],
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.green.withOpacity(0.4),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: const Center(
+              child: Text(
+                "Masuk ke Dapur",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
                 ),
               ),
             ),
@@ -247,7 +255,7 @@ class HomePage extends StatelessWidget {
           width: 80,
           height: 80,
           decoration: BoxDecoration(
-            color: const Color(0xFFF5F5F5), // Background abu sangat muda
+            color: const Color(0xFFF5F5F5),
             borderRadius: BorderRadius.circular(16),
           ),
           padding: const EdgeInsets.all(16),
@@ -274,7 +282,7 @@ class HomePage extends StatelessWidget {
       width: 70,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: const Color(0xFFE8F5E9), // Hijau sangat muda
+        color: const Color(0xFFE8F5E9),
         border: Border.all(color: Colors.white, width: 3),
         boxShadow: [
           BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10),
@@ -297,18 +305,17 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  // WIDGET: CUSTOM BOTTOM NAV BAR
-  Widget _buildCustomBottomNavBar() {
+  // WIDGET: CUSTOM BOTTOM NAV BAR (DIHUBUNGKAN)
+  Widget _buildCustomBottomNavBar(BuildContext context) {
     return SizedBox(
-      height: 100, // Tinggi total area navigasi
+      height: 100,
       child: Stack(
         alignment: Alignment.bottomCenter,
         children: [
-          // 1. Background Hijau Melengkung
           Container(
             height: 70,
             decoration: const BoxDecoration(
-              color: Color(0xFF63B685), // Warna Hijau Utama
+              color: Color(0xFF63B685),
               borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(30),
                 topRight: Radius.circular(30),
@@ -317,51 +324,107 @@ class HomePage extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildNavItem(Icons.home, "Home", true),
-                _buildNavItem(Icons.shopping_basket, "Dapur Saya", false),
-                const SizedBox(width: 60), // Space kosong untuk tombol tengah
-                _buildNavItem(Icons.chat_bubble, "Komunitas", false),
-                _buildNavItem(Icons.person, "Profil", false),
+                _buildNavItem(Icons.home, "Home", true), // Home aktif
+                // Dapur Saya
+                GestureDetector(
+                  onTap: () {
+                    Navigator.pushReplacement(
+                      context,
+                      PageRouteBuilder(
+                        pageBuilder: (_, __, ___) => const MyKitchenPage(),
+                        transitionDuration: Duration.zero,
+                      ),
+                    );
+                  },
+                  child: _buildNavItem(
+                    Icons.shopping_basket,
+                    "Dapur Saya",
+                    false,
+                  ),
+                ),
+
+                const SizedBox(width: 60),
+
+                // Komunitas
+                GestureDetector(
+                  onTap: () {
+                    Navigator.pushReplacement(
+                      context,
+                      PageRouteBuilder(
+                        pageBuilder: (_, __, ___) => const CommunityPage(),
+                        transitionDuration: Duration.zero,
+                      ),
+                    );
+                  },
+                  child: _buildNavItem(Icons.chat_bubble, "Komunitas", false),
+                ),
+
+                // Profil
+                GestureDetector(
+                  onTap: () {
+                    Navigator.pushReplacement(
+                      context,
+                      PageRouteBuilder(
+                        pageBuilder: (_, __, ___) => const ProfilePage(),
+                        transitionDuration: Duration.zero,
+                      ),
+                    );
+                  },
+                  child: _buildNavItem(Icons.person, "Profil", false),
+                ),
               ],
             ),
           ),
 
-          // 2. Tombol Tengah (Menonjol)
+          // Tombol Tengah (Cari Resep)
           Positioned(
             top: 0,
-            child: Container(
-              width: 75,
-              height: 75,
-              decoration: BoxDecoration(
-                color: Colors.white, // Lingkaran putih luar
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, -2),
+            child: GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const SearchLoadingPage(),
                   ),
-                ],
-              ),
-              padding: const EdgeInsets.all(5),
+                );
+              },
               child: Container(
-                decoration: const BoxDecoration(
-                  color: Color(0xFF63B685), // Lingkaran hijau dalam
+                width: 75,
+                height: 75,
+                decoration: BoxDecoration(
+                  color: Colors.white,
                   shape: BoxShape.circle,
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Image.asset('assets/images/home/logosmall.png', height: 30),
-                    const Text(
-                      "Cari resep",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 8,
-                        fontWeight: FontWeight.bold,
-                      ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 10,
+                      offset: const Offset(0, -2),
                     ),
                   ],
+                ),
+                padding: const EdgeInsets.all(5),
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF63B685),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Image.asset(
+                        'assets/images/home/logosmall.png',
+                        height: 30,
+                      ),
+                      const Text(
+                        "Cari resep",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 8,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

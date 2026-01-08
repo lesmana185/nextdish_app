@@ -5,6 +5,8 @@ import 'chat_ai_page.dart';
 import 'cooking_mode_intro_page.dart';
 import 'comunity_page.dart';
 import 'profile_page.dart';
+import 'compost_landing_page.dart';
+import 'recipe_detail_page.dart'; // <--- 1. IMPORT HALAMAN DETAIL RESEP
 
 class HomeComplexPage extends StatelessWidget {
   const HomeComplexPage({super.key});
@@ -53,7 +55,7 @@ class HomeComplexPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
 
-                  // GRID BUTTONS
+                  // GRID BUTTONS (Updated: Atur Porsi Terhubung)
                   _buildQuickActions(context),
 
                   const SizedBox(height: 24),
@@ -330,6 +332,7 @@ class HomeComplexPage extends StatelessWidget {
         children: [
           Row(
             children: [
+              // TOMBOL: CARI RESEP DARI BAHAN
               Expanded(
                 child: _actionButton(
                   "Cari Resep\nDari Bahan",
@@ -346,6 +349,8 @@ class HomeComplexPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
+
+              // TOMBOL: MODE MASAK
               Expanded(
                 child: _actionButton(
                   "Mode Masak",
@@ -366,19 +371,42 @@ class HomeComplexPage extends StatelessWidget {
           const SizedBox(height: 12),
           Row(
             children: [
+              // --- TOMBOL: ATUR PORSI (DIHUBUNGKAN KE DETAIL RESEP) ---
               Expanded(
                 child: _actionButton(
                   "Atur Porsi",
                   const Color(0xFFEF9A9A),
                   'assets/images/home/scalelogo.png',
+                  onTap: () {
+                    // Masuk ke Detail Resep (Contoh: Nasi Goreng) untuk demo atur porsi
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const RecipeDetailPage(
+                          recipeName: "Nasi Goreng",
+                          imagePath: "assets/images/rekomendasi/nasigoreng.jpg",
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
               const SizedBox(width: 12),
+
+              // TOMBOL: COMPOSITE ASSISTANT
               Expanded(
                 child: _actionButton(
                   "Composite\nAssistant",
                   const Color(0xFFA5D6A7),
                   'assets/images/home/daurlogo.png',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const CompostLandingPage(),
+                      ),
+                    );
+                  },
                 ),
               ),
             ],
@@ -680,8 +708,6 @@ class HomeComplexPage extends StatelessWidget {
                   },
                   child: _navItem(Icons.chat_bubble, "Komunitas", false),
                 ),
-
-                // --- 2. UPDATE ICON PROFIL AGAR BISA DIKLIK ---
                 GestureDetector(
                   onTap: () {
                     Navigator.pushReplacement(

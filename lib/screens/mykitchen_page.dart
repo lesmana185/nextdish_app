@@ -5,6 +5,7 @@ import 'search_loading_page.dart'; // Import Search
 import 'chat_ai_page.dart'; // Import Chat AI
 import 'comunity_page.dart'; // Import Komunitas
 import 'profile_page.dart'; // Import Profil
+import 'compost_landing_page.dart';
 
 // Model Data Bahan
 class KitchenIngredient {
@@ -460,14 +461,27 @@ class _MyKitchenPageState extends State<MyKitchenPage> {
               ],
             ),
           ),
-          CircleAvatar(
-            backgroundColor: Colors.green.shade100,
-            radius: 14,
-            child: Image.asset(
-              'assets/images/icons/compost.png',
-              width: 18,
-              errorBuilder: (c, e, s) =>
-                  Icon(Icons.eco, size: 18, color: Colors.green),
+
+          // --- IKON COMPOST YANG BISA DIKLIK ---
+          GestureDetector(
+            onTap: () {
+              // Navigasi ke Halaman Compost Landing Page
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const CompostLandingPage(),
+                ),
+              );
+            },
+            child: CircleAvatar(
+              backgroundColor: Colors.green.shade100,
+              radius: 14,
+              child: Image.asset(
+                'assets/images/icons/compost.png',
+                width: 18,
+                errorBuilder: (c, e, s) =>
+                    const Icon(Icons.eco, size: 18, color: Colors.green),
+              ),
             ),
           ),
         ],
