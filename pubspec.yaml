@@ -1,0 +1,54 @@
+name: nextdish_app
+description: "A new Flutter project."
+publish_to: 'none' 
+
+version: 1.0.0+1
+
+environment:
+  # SAYA UBAH KE >=3.0.0 AGAR LEBIH AMAN DAN KOMPATIBEL
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  supabase_flutter: ^2.12.0
+  flutter_markdown: ^0.6.0
+  
+  # 👇 TAMBAHKAN INI (Wajib untuk nembak API Groq)
+  http: ^1.2.0
+  flutter_dotenv: ^6.0.0
+
+  # 👇 YANG INI HAPUS AJA (Sudah tidak kita pakai, biar gak berat/error)
+  # google_generative_ai:
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+
+  # PASTIKAN FOLDER-FOLDER INI BENAR-BENAR ADA DI PROJECT KAMU
+  assets:
+    - assets/images/
+    - assets/images/logo/
+    - assets/images/icons/
+    - assets/images/illustrasi/
+    - assets/images/home/
+    - assets/images/dapur/
+    - assets/images/ingredients/
+    - assets/images/resep/
+    - assets/images/rekomendasi/
+    - .env
+
+  fonts:
+    - family: Poppins
+      fonts:
+        - asset: assets/fonts/Poppins-Regular.ttf
+        - asset: assets/fonts/Poppins-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Poppins-Bold.ttf
+          weight: 700
