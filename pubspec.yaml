@@ -23,6 +23,13 @@ dependencies:
   # 👇 YANG INI HAPUS AJA (Sudah tidak kita pakai, biar gak berat/error)
   # google_generative_ai:
 
+  flutter_tts: ^3.8.5     # Mulut (Suara)
+  wakelock_plus: ^1.2.8   # Mata (Layar Tetap Nyala)
+  image_picker: ^1.2.1
+  timeago: ^3.7.1
+  image_cropper: ^11.0.0
+  shared_preferences: ^2.5.4
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

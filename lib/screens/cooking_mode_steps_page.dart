@@ -1,180 +1,156 @@
 import 'package:flutter/material.dart';
-import 'cooking_mode_sucses_page.dart'; // Pastikan nama file ini sesuai di project kamu
-import 'home_page.dart';
+import 'package:flutter_tts/flutter_tts.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
+import 'cooking_mode_sucses_page.dart'; // Pastikan nama file sesuai
 
 class CookingModeStepsPage extends StatefulWidget {
-  const CookingModeStepsPage({super.key});
+  final String recipeName;
+  final List<dynamic> steps; // Data langkah dinamis
+
+  const CookingModeStepsPage(
+      {super.key, required this.recipeName, required this.steps});
 
   @override
   State<CookingModeStepsPage> createState() => _CookingModeStepsPageState();
 }
 
 class _CookingModeStepsPageState extends State<CookingModeStepsPage> {
+  final FlutterTts _flutterTts = FlutterTts();
   int _currentStepIndex = 0;
+  bool _isSpeaking = false;
 
-  // DATA LANGKAH-LANGKAH
-  final List<Map<String, String>> _steps = [
-    {
-      'title': 'Persiapan Bahan',
-      'description':
-          'Cuci dan potong bawang putih serta bawang merah. Pecahkan telur ke dalam wadah terpisah agar siap digunakan.',
-      'trigger': 'lanjut',
-    },
-    {
-      'title': 'Panaskan Wajan',
-      'description':
-          'Panaskan wajan dengan sedikit minyak di atas api sedang.\nTunggu hingga minyak cukup panas.',
-      'trigger': 'lanjut',
-    },
-    {
-      'title': 'Tumis Bumbu',
-      'description':
-          'Masukkan bawang putih dan bawang merah ke dalam wajan.\nTumis hingga harum dan berubah warna keemasan.',
-      'trigger': 'lanjut',
-    },
-    {
-      'title': 'Penyelesaian',
-      'description':
-          'Masak nasi goreng hingga matang dan harum.\nAngkat dan sajikan selagi hangat.',
-      'trigger': 'selesai',
-    },
-  ];
-
-  void _nextStep() {
-    setState(() {
-      if (_currentStepIndex < _steps.length - 1) {
-        _currentStepIndex++;
-      } else {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const CookingModeSuccessPage(),
-          ),
-        );
-      }
-    });
+  @override
+  void initState() {
+    super.initState();
+    _initCookingMode();
   }
 
-  // --- FUNGSI MENAMPILKAN ALERT KELUAR (Sesuai Desain Alert.png) ---
+  void _initCookingMode() async {
+    // 1. Agar layar HP tidak mati
+    WakelockPlus.enable();
+
+    // 2. Setting Suara Bahasa Indonesia
+    await _flutterTts.setLanguage("id-ID");
+    await _flutterTts.setSpeechRate(0.5);
+
+    // 3. Baca langkah pertama otomatis (tunggu 1 detik biar transisi smooth)
+    await Future.delayed(const Duration(seconds: 1));
+    _speakCurrentStep();
+  }
+
+  @override
+  void dispose() {
+    _flutterTts.stop();
+    WakelockPlus.disable(); // Matikan fitur layar nyala
+    super.dispose();
+  }
+
+  Future<void> _speakCurrentStep() async {
+    // Ambil teks langkah saat ini
+    String text = widget.steps[_currentStepIndex].toString();
+
+    // Hiasan sedikit agar robot lebih ramah
+    String intro = "Langkah ke-${_currentStepIndex + 1}. ";
+
+    setState(() => _isSpeaking = true);
+    await _flutterTts.speak(intro + text);
+    setState(() => _isSpeaking = false);
+  }
+
+  void _stopSpeaking() async {
+    await _flutterTts.stop();
+    setState(() => _isSpeaking = false);
+  }
+
+  void _nextStep() {
+    _stopSpeaking();
+    if (_currentStepIndex < widget.steps.length - 1) {
+      setState(() {
+        _currentStepIndex++;
+      });
+      _speakCurrentStep(); // Baca langkah selanjutnya
+    } else {
+      // Selesai, pindah ke halaman sukses
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) =>
+              CookingModeSuccessPage(recipeName: widget.recipeName),
+        ),
+      );
+    }
+  }
+
+  void _prevStep() {
+    _stopSpeaking();
+    if (_currentStepIndex > 0) {
+      setState(() {
+        _currentStepIndex--;
+      });
+      _speakCurrentStep();
+    }
+  }
+
+  // --- DIALOG KELUAR ---
   Future<bool> _showExitConfirmDialog() async {
+    _stopSpeaking(); // Diamkan suara saat dialog muncul
     return await showDialog(
           context: context,
-          barrierDismissible:
-              false, // User harus pilih tombol, gabisa klik luar
+          barrierDismissible: false,
           builder: (context) => Dialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             elevation: 10,
             backgroundColor: Colors.white,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // 1. HEADER KUNING
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 20,
-                    horizontal: 10,
-                  ),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 20, horizontal: 10),
                   decoration: const BoxDecoration(
-                    color: Color(0xFFFFF59D), // Kuning Pastel
+                    color: Color(0xFFFFF59D),
                     borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(20),
-                      topRight: Radius.circular(20),
-                    ),
+                        topLeft: Radius.circular(20),
+                        topRight: Radius.circular(20)),
                   ),
                   child: const Center(
                     child: Text(
-                      "Keluar Dari Mode Masak ?",
-                      textAlign: TextAlign.center,
+                      "Keluar Dari Mode Masak?",
                       style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'Serif',
-                        color: Colors.black87,
-                      ),
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'Serif'),
                     ),
                   ),
                 ),
-
-                // 2. KONTEN TEKS & TOMBOL
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 30, 24, 30),
+                  padding: const EdgeInsets.all(24),
                   child: Column(
                     children: [
                       const Text(
-                        "Kamu belum menyelesaikan proses memasak. Jika keluar sekarang, panduan suara akan dihentikan.",
+                        "Proses masak belum selesai. Panduan suara akan berhenti.",
                         textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          height: 1.5,
-                          color: Colors.black87,
-                        ),
+                        style: TextStyle(fontSize: 14, height: 1.5),
                       ),
                       const SizedBox(height: 30),
-
-                      // 3. TOMBOL AKSI (YA / TIDAK)
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
-                          // Tombol YA (Hijau)
-                          SizedBox(
-                            width: 110,
-                            height: 45,
-                            child: ElevatedButton(
-                              onPressed: () {
-                                Navigator.of(
-                                  context,
-                                ).pop(true); // Return true (Keluar)
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF38A169),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(30),
-                                ),
-                                elevation: 0,
-                              ),
-                              child: const Text(
-                                "YA",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ),
+                          ElevatedButton(
+                            onPressed: () => Navigator.of(context).pop(true),
+                            style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF38A169)),
+                            child: const Text("YA",
+                                style: TextStyle(color: Colors.white)),
                           ),
-
-                          // Tombol TIDAK (Abu)
-                          SizedBox(
-                            width: 110,
-                            height: 45,
-                            child: ElevatedButton(
-                              onPressed: () {
-                                Navigator.of(
-                                  context,
-                                ).pop(false); // Return false (Batal)
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(
-                                  0xFF6C757D,
-                                ), // Abu-abu gelap
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(30),
-                                ),
-                                elevation: 0,
-                              ),
-                              child: const Text(
-                                "TIDAK",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ),
+                          ElevatedButton(
+                            onPressed: () => Navigator.of(context).pop(false),
+                            style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.grey),
+                            child: const Text("TIDAK",
+                                style: TextStyle(color: Colors.white)),
                           ),
                         ],
                       ),
@@ -190,18 +166,15 @@ class _CookingModeStepsPageState extends State<CookingModeStepsPage> {
 
   @override
   Widget build(BuildContext context) {
-    double progress = (_currentStepIndex + 1) / _steps.length;
+    double progress = (_currentStepIndex + 1) / widget.steps.length;
+    String currentStepText = widget.steps[_currentStepIndex].toString();
 
-    // PopScope: Menangani tombol Back fisik di Android
     return PopScope(
-      canPop: false, // Matikan back default
+      canPop: false,
       onPopInvoked: (didPop) async {
         if (didPop) return;
-        // Panggil Dialog Konfirmasi
         final shouldPop = await _showExitConfirmDialog();
-        if (shouldPop && context.mounted) {
-          Navigator.pop(context); // Keluar jika user pilih YA
-        }
+        if (shouldPop && context.mounted) Navigator.pop(context);
       },
       child: Scaffold(
         backgroundColor: const Color(0xFFE8F5E9),
@@ -213,61 +186,37 @@ class _CookingModeStepsPageState extends State<CookingModeStepsPage> {
                   // --- HEADER ---
                   Padding(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 10,
-                    ),
+                        horizontal: 20, vertical: 10),
                     child: Row(
                       children: [
-                        // TOMBOL BACK (Di-update dengan Dialog)
                         GestureDetector(
                           onTap: () async {
-                            // Panggil Dialog Konfirmasi saat tombol back ditekan
                             final shouldPop = await _showExitConfirmDialog();
-                            if (shouldPop && context.mounted) {
+                            if (shouldPop && context.mounted)
                               Navigator.pop(context);
-                            }
                           },
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade300,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.arrow_back,
-                              size: 20,
-                              color: Colors.black54,
-                            ),
+                          child: const CircleAvatar(
+                            backgroundColor: Colors.white,
+                            child: Icon(Icons.close, color: Colors.black),
                           ),
                         ),
-                        const Expanded(
+                        Expanded(
                           child: Center(
                             child: Text(
-                              "Mode Masak",
-                              style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                                fontFamily: 'Serif',
-                              ),
+                              widget.recipeName, // Judul Dinamis
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  fontFamily: 'Serif'),
                             ),
                           ),
                         ),
-                        Column(
-                          children: [
-                            Image.asset(
-                              'assets/images/home/logosmall.png',
-                              height: 30,
-                            ),
-                            const Text(
-                              "NextDish",
-                              style: TextStyle(
-                                color: Color(0xFF2E7D32),
-                                fontSize: 8,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
+                        // Indikator Suara
+                        Icon(
+                          _isSpeaking ? Icons.volume_up : Icons.volume_mute,
+                          color: _isSpeaking ? Colors.green : Colors.grey,
+                        )
                       ],
                     ),
                   ),
@@ -277,58 +226,25 @@ class _CookingModeStepsPageState extends State<CookingModeStepsPage> {
                   // --- BANNER INSTRUKSI ---
                   Container(
                     margin: const EdgeInsets.symmetric(horizontal: 20),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
+                    padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
-                        BoxShadow(color: Colors.black12, blurRadius: 5),
+                        BoxShadow(color: Colors.black12, blurRadius: 5)
                       ],
                     ),
                     child: Row(
                       children: [
-                        Image.asset(
-                          'assets/images/illustrasi/robotmic.png',
-                          height: 60,
-                          errorBuilder: (ctx, err, s) => const Icon(
-                            Icons.smart_toy,
-                            size: 40,
-                            color: Colors.green,
-                          ),
-                        ),
+                        Image.asset('assets/images/illustrasi/robotmic.png',
+                            height: 50,
+                            errorBuilder: (c, e, s) =>
+                                const Icon(Icons.smart_toy)),
                         const SizedBox(width: 12),
-                        Expanded(
-                          child: RichText(
-                            text: const TextSpan(
-                              style: TextStyle(
-                                color: Colors.black87,
-                                fontSize: 12,
-                              ),
-                              children: [
-                                TextSpan(
-                                  text: "Mode masak suara aktif.\nKatakan ",
-                                ),
-                                TextSpan(
-                                  text: "‘lanjut’",
-                                  style: TextStyle(
-                                    color: Colors.green,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                TextSpan(text: " untuk melanjutkan,\natau "),
-                                TextSpan(
-                                  text: "‘ulang’",
-                                  style: TextStyle(
-                                    color: Colors.red,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                TextSpan(text: " untuk mengulangi instruksi"),
-                              ],
-                            ),
+                        const Expanded(
+                          child: Text(
+                            "Ketuk kartu di bawah untuk membaca ulang suara.",
+                            style: TextStyle(fontSize: 12),
                           ),
                         ),
                       ],
@@ -340,89 +256,70 @@ class _CookingModeStepsPageState extends State<CookingModeStepsPage> {
                   // --- PROGRESS BAR ---
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 40),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: LinearProgressIndicator(
-                        value: progress,
-                        backgroundColor: Colors.grey.shade300,
-                        color: const Color(0xFF63B685),
-                        minHeight: 10,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                            "Langkah ${_currentStepIndex + 1}/${widget.steps.length}",
+                            style: const TextStyle(
+                                fontSize: 12, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 5),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: LinearProgressIndicator(
+                            value: progress,
+                            backgroundColor: Colors.grey.shade300,
+                            color: const Color(0xFF63B685),
+                            minHeight: 10,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
 
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 20),
 
-                  // --- KARTU LANGKAH ---
+                  // --- KARTU LANGKAH (Bisa Diklik untuk Baca Ulang) ---
                   Expanded(
-                    child: Container(
-                      width: double.infinity,
-                      margin: const EdgeInsets.fromLTRB(20, 0, 20, 100),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 30,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(24),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _steps[_currentStepIndex]['title']!,
-                            style: const TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          Text(
-                            _steps[_currentStepIndex]['description']!,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              height: 1.6,
-                              color: Colors.black87,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 60),
-                          Center(
-                            child: RichText(
-                              text: TextSpan(
-                                style: const TextStyle(
-                                  color: Colors.black87,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                children: [
-                                  const TextSpan(
-                                    text: "Jika sudah selesai, ucapkan ",
-                                  ),
-                                  TextSpan(
-                                    text:
-                                        "“${_steps[_currentStepIndex]['trigger']}”",
-                                    style: const TextStyle(
-                                      color: Color(0xFF63B685),
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                  const TextSpan(text: "."),
-                                ],
+                    child: GestureDetector(
+                      onTap: () {
+                        if (_isSpeaking) {
+                          _stopSpeaking();
+                        } else {
+                          _speakCurrentStep();
+                        }
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+                        padding: const EdgeInsets.all(30),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(24),
+                          border: _isSpeaking
+                              ? Border.all(color: Colors.green, width: 3)
+                              : null,
+                          boxShadow: [
+                            BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4)),
+                          ],
+                        ),
+                        child: Center(
+                          child: SingleChildScrollView(
+                            child: Text(
+                              currentStepText,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 24, // Huruf Besar agar terbaca
+                                height: 1.5,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
                               ),
                             ),
                           ),
-                        ],
+                        ),
                       ),
                     ),
                   ),
@@ -430,146 +327,40 @@ class _CookingModeStepsPageState extends State<CookingModeStepsPage> {
               ),
             ),
 
-            // --- TOMBOL MIC ---
+            // --- TOMBOL NAVIGASI BAWAH ---
             Positioned(
-              bottom: 90,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: GestureDetector(
-                  onTap: _nextStep,
-                  child: Container(
-                    width: 75,
-                    height: 75,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF42A5F5), Color(0xFF1976D2)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.blue.withOpacity(0.4),
-                          blurRadius: 15,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                      border: Border.all(color: Colors.white, width: 4),
-                    ),
-                    child: const Icon(Icons.mic, color: Colors.white, size: 38),
+              bottom: 30,
+              left: 20,
+              right: 20,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Tombol Mundur
+                  FloatingActionButton(
+                    heroTag: "btn1",
+                    onPressed: _currentStepIndex == 0 ? null : _prevStep,
+                    backgroundColor: Colors.white,
+                    child: const Icon(Icons.arrow_back, color: Colors.black),
                   ),
-                ),
-              ),
-            ),
 
-            // Nav Bar
-            Align(
-              alignment: Alignment.bottomCenter,
-              child: _buildCustomBottomNavBar(context),
+                  // Tombol Lanjut (Next) - Paling Besar
+                  SizedBox(
+                    height: 70,
+                    width: 70,
+                    child: FloatingActionButton(
+                      heroTag: "btn2",
+                      onPressed: _nextStep,
+                      backgroundColor: const Color(0xFF63B685),
+                      child: const Icon(Icons.arrow_forward,
+                          color: Colors.white, size: 30),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
       ),
-    );
-  }
-
-  // --- REUSED NAV BAR ---
-  Widget _buildCustomBottomNavBar(BuildContext context) {
-    return SizedBox(
-      height: 100,
-      child: Stack(
-        alignment: Alignment.bottomCenter,
-        children: [
-          Container(
-            height: 70,
-            decoration: const BoxDecoration(
-              color: Color(0xFF63B685),
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(30),
-                topRight: Radius.circular(30),
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                GestureDetector(
-                  onTap: () => Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (_) => HomePage()),
-                  ),
-                  child: _navItem(Icons.home, "Home", false),
-                ),
-                _navItem(Icons.shopping_basket, "Dapur Saya", false),
-                const SizedBox(width: 60),
-                _navItem(Icons.chat_bubble, "Komunitas", false),
-                _navItem(Icons.person, "Profil", false),
-              ],
-            ),
-          ),
-          Positioned(
-            top: 0,
-            child: Container(
-              width: 75,
-              height: 75,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black12,
-                    blurRadius: 10,
-                    offset: const Offset(0, -2),
-                  ),
-                ],
-              ),
-              padding: const EdgeInsets.all(5),
-              child: Container(
-                decoration: const BoxDecoration(
-                  color: Color(0xFF63B685),
-                  shape: BoxShape.circle,
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Image.asset('assets/images/home/logosmall.png', height: 30),
-                    const Text(
-                      "Cari resep",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 8,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _navItem(IconData icon, String label, bool isActive) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(
-          icon,
-          color: isActive ? const Color(0xFF1B5E20) : Colors.white,
-          size: 28,
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            color: isActive ? const Color(0xFF1B5E20) : Colors.white,
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
     );
   }
 }

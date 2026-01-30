@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:nextdish_app/main_scaffold.dart';
 import 'home_page.dart';
 
 class CookingModeSuccessPage extends StatelessWidget {
-  const CookingModeSuccessPage({super.key});
+  final String recipeName;
+
+  const CookingModeSuccessPage({super.key, required this.recipeName});
 
   @override
   Widget build(BuildContext context) {
@@ -17,133 +20,62 @@ class CookingModeSuccessPage extends StatelessWidget {
                 child: Column(
                   children: [
                     const SizedBox(height: 20),
-                    // HEADER SIMPLE
                     const Text(
-                      "Mode Masak",
+                      "Mode Masak Selesai",
                       style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'Serif',
-                      ),
-                    ),
-                    const Align(
-                      alignment: Alignment.centerRight,
-                      child: Text(
-                        "NextDish",
-                        style: TextStyle(
-                          color: Color(0xFF2E7D32),
-                          fontSize: 10,
+                          fontSize: 22,
                           fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                          fontFamily: 'Serif'),
                     ),
-
-                    const Spacer(),
+                    const SizedBox(height: 50),
 
                     // GAMBAR ROBOT SUKSES
                     Image.asset(
                       'assets/images/illustrasi/robotsucses.png',
                       height: 250,
+                      errorBuilder: (c, e, s) => const Icon(Icons.check_circle,
+                          size: 150, color: Colors.green),
                     ),
 
                     const SizedBox(height: 30),
 
                     // UCAPAN SELAMAT
-                    const Text(
-                      "“Selamat! Nasi goreng kamu sudah siap disajikan.\nTerima kasih sudah memasak bersama NextDish.\nSelamat menikmati!”",
+                    Text(
+                      "“Selamat! $recipeName kamu sudah siap disajikan.\nTerima kasih sudah memasak bersama NextDish.”",
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        height: 1.5,
-                      ),
+                      style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          height: 1.5),
                     ),
 
-                    const Spacer(flex: 2),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          // Nav Bar Bawah
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: _buildCustomBottomNavBar(context),
-          ),
-        ],
-      ),
-    );
-  }
+                    const Spacer(),
 
-  // (Paste ulang fungsi _buildCustomBottomNavBar dan _navItem di sini)
-  // ... (Gunakan kode Nav Bar yang sama seperti di file sebelumnya)
-
-  Widget _buildCustomBottomNavBar(BuildContext context) {
-    return SizedBox(
-      height: 100,
-      child: Stack(
-        alignment: Alignment.bottomCenter,
-        children: [
-          Container(
-            height: 70,
-            decoration: const BoxDecoration(
-              color: Color(0xFF63B685),
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(30),
-                topRight: Radius.circular(30),
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                GestureDetector(
-                  onTap: () => Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (_) => HomePage()),
-                  ),
-                  child: _navItem(Icons.home, "Home", false),
-                ),
-                _navItem(Icons.shopping_basket, "Dapur Saya", false),
-                const SizedBox(width: 60),
-                _navItem(Icons.chat_bubble, "Komunitas", false),
-                _navItem(Icons.person, "Profil", false),
-              ],
-            ),
-          ),
-          Positioned(
-            top: 0,
-            child: Container(
-              width: 75,
-              height: 75,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black12,
-                    blurRadius: 10,
-                    offset: const Offset(0, -2),
-                  ),
-                ],
-              ),
-              padding: const EdgeInsets.all(5),
-              child: Container(
-                decoration: const BoxDecoration(
-                  color: Color(0xFF63B685),
-                  shape: BoxShape.circle,
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Image.asset('assets/images/home/logosmall.png', height: 30),
-                    const Text(
-                      "Cari resep",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 8,
-                        fontWeight: FontWeight.bold,
+                    // TOMBOL KEMBALI KE HOME
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF63B685),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(30)),
+                        ),
+                        onPressed: () {
+                          // Kembali ke Home dan hapus semua history halaman masak
+                          Navigator.of(context).pushAndRemoveUntil(
+                            MaterialPageRoute(
+                                builder: (context) => const MainScaffold()),
+                            (Route<dynamic> route) => false,
+                          );
+                        },
+                        child: const Text("KEMBALI KE BERANDA",
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold)),
                       ),
                     ),
+                    const SizedBox(height: 40),
                   ],
                 ),
               ),
@@ -151,28 +83,6 @@ class CookingModeSuccessPage extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _navItem(IconData icon, String label, bool isActive) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(
-          icon,
-          color: isActive ? const Color(0xFF1B5E20) : Colors.white,
-          size: 28,
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            color: isActive ? const Color(0xFF1B5E20) : Colors.white,
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
     );
   }
 }

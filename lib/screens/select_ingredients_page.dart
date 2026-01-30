@@ -1,360 +1,318 @@
 import 'package:flutter/material.dart';
-
-class Ingredient {
-  final String id;
-  final String name;
-  final String imagePath;
-  bool isSelected;
-
-  Ingredient({
-    required this.id,
-    required this.name,
-    required this.imagePath,
-    this.isSelected = false,
-  });
-}
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SelectIngredientsPage extends StatefulWidget {
-  final VoidCallback? onManualInputRequest;
+  final VoidCallback onManualInputRequest;
 
-  const SelectIngredientsPage({super.key, this.onManualInputRequest});
+  const SelectIngredientsPage({super.key, required this.onManualInputRequest});
 
   @override
   State<SelectIngredientsPage> createState() => _SelectIngredientsPageState();
 }
 
 class _SelectIngredientsPageState extends State<SelectIngredientsPage> {
-  // --- DATA DUMMY ---
-  // Nanti bisa diganti dengan data dari API/Database
-  final List<Ingredient> _allIngredients = [
-    Ingredient(
-      id: '1',
-      name: 'Ayam',
-      imagePath: 'assets/images/ingredients/ayam.png',
-    ),
-    Ingredient(
-      id: '2',
-      name: 'Wortel',
-      imagePath: 'assets/images/ingredients/wortel.png',
-    ),
-    Ingredient(
-      id: '3',
-      name: 'Bawang Putih',
-      imagePath: 'assets/images/ingredients/bawang.png',
-    ),
-    Ingredient(
-      id: '4',
-      name: 'Telur',
-      imagePath: 'assets/images/ingredients/telur.png',
-      isSelected: true,
-    ), // Contoh default terpilih
-    Ingredient(
-      id: '5',
-      name: 'Tomat',
-      imagePath: 'assets/images/ingredients/tomat.png',
-    ),
-    Ingredient(
-      id: '6',
-      name: 'Cabai',
-      imagePath: 'assets/images/ingredients/cabai.png',
-    ),
+  final TextEditingController _searchController = TextEditingController();
+  String _keyword = "";
+
+  // --- DATABASE KATALOG BAHAN (HARDCODED) ---
+  // Ini daftar bahan umum biar user gampang milih
+  final List<Map<String, String>> _catalog = [
+    {'name': 'Telur', 'unit': 'Butir', 'category': 'Protein'},
+    {'name': 'Ayam', 'unit': 'Kg', 'category': 'Protein'},
+    {'name': 'Daging Sapi', 'unit': 'Kg', 'category': 'Protein'},
+    {'name': 'Ikan', 'unit': 'Ekor', 'category': 'Protein'},
+    {'name': 'Tahu', 'unit': 'Potong', 'category': 'Protein'},
+    {'name': 'Tempe', 'unit': 'Papan', 'category': 'Protein'},
+    {'name': 'Udang', 'unit': 'Kg', 'category': 'Protein'},
+    {'name': 'Wortel', 'unit': 'Buah', 'category': 'Sayur'},
+    {'name': 'Bayam', 'unit': 'Ikat', 'category': 'Sayur'},
+    {'name': 'Kangkung', 'unit': 'Ikat', 'category': 'Sayur'},
+    {'name': 'Brokoli', 'unit': 'Bonggol', 'category': 'Sayur'},
+    {'name': 'Tomat', 'unit': 'Buah', 'category': 'Sayur'},
+    {'name': 'Kentang', 'unit': 'Kg', 'category': 'Sayur'},
+    {'name': 'Bawang Merah', 'unit': 'Siung', 'category': 'Bumbu'},
+    {'name': 'Bawang Putih', 'unit': 'Siung', 'category': 'Bumbu'},
+    {'name': 'Cabai', 'unit': 'Buah', 'category': 'Bumbu'},
+    {'name': 'Beras', 'unit': 'Kg', 'category': 'Karbo'},
+    {'name': 'Mie Instan', 'unit': 'Bungkus', 'category': 'Karbo'},
+    {'name': 'Roti Tawar', 'unit': 'Lembar', 'category': 'Karbo'},
+    {'name': 'Susu', 'unit': 'Liter', 'category': 'Lainnya'},
+    {'name': 'Keju', 'unit': 'Balok', 'category': 'Lainnya'},
+    {'name': 'Minyak Goreng', 'unit': 'Liter', 'category': 'Lainnya'},
+    {'name': 'Garam', 'unit': 'Sdt', 'category': 'Bumbu'},
+    {'name': 'Gula', 'unit': 'Sdm', 'category': 'Bumbu'},
   ];
 
-  // List yang akan ditampilkan (hasil filter)
-  List<Ingredient> _foundIngredients = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _foundIngredients = _allIngredients; // Awalnya tampilkan semua
+  // Helper Gambar
+  String _getImageAsset(String name) {
+    final n = name.toLowerCase();
+    if (n.contains('telur')) return 'assets/images/ingredients/telur.png';
+    if (n.contains('ayam') || n.contains('daging'))
+      return 'assets/images/ingredients/ayam.png';
+    if (n.contains('susu')) return 'assets/images/ingredients/susu.png';
+    if (n.contains('keju')) return 'assets/images/ingredients/keju.png';
+    if (n.contains('nasi') || n.contains('beras'))
+      return 'assets/images/ingredients/nasi.png';
+    if (n.contains('wortel')) return 'assets/images/ingredients/wortel.png';
+    if (n.contains('roti')) return 'assets/images/ingredients/roti.png';
+    // Default fallback
+    return 'assets/images/ingredients/sayur.png';
   }
 
-  // Fungsi Pencarian
-  void _runFilter(String keyword) {
-    List<Ingredient> results = [];
-    if (keyword.isEmpty) {
-      results = _allIngredients;
-    } else {
-      results = _allIngredients
-          .where(
-            (item) => item.name.toLowerCase().contains(keyword.toLowerCase()),
-          )
-          .toList();
+  // --- LOGIKA SIMPAN KE SUPABASE ---
+  Future<void> _saveIngredient(String name, String qty, String unit) async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+
+    try {
+      await Supabase.instance.client.from('user_ingredients').insert({
+        'user_id': user.id,
+        'name': name,
+        'quantity': "$qty $unit",
+        'status': 'Segar',
+        'expiry_date':
+            DateTime.now().add(const Duration(days: 7)).toIso8601String(),
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("$name berhasil ditambahkan! ✅"),
+            duration: const Duration(seconds: 1),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: const Color(0xFF38A169),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint("Gagal simpan: $e");
     }
-
-    setState(() {
-      _foundIngredients = results;
-    });
   }
 
-  // Menghitung jumlah yang terpilih
-  int get _selectedCount => _allIngredients.where((i) => i.isSelected).length;
+  // --- DIALOG INPUT JUMLAH ---
+  void _showQuantityDialog(Map<String, String> item) {
+    final TextEditingController qtyCtrl = TextEditingController(text: "1");
+    final TextEditingController unitCtrl =
+        TextEditingController(text: item['unit']);
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // --- HEADER ---
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Row(
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Padding(
+        padding:
+            EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 children: [
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: const Icon(Icons.chevron_left, size: 32),
-                  ),
-                  const Expanded(
-                    child: Center(
-                      child: Text(
-                        "Pilih Bahan",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 32), // Spacer penyeimbang
+                  Image.asset(_getImageAsset(item['name']!), height: 40),
+                  const SizedBox(width: 12),
+                  Text("Tambah ${item['name']}",
+                      style: const TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold)),
                 ],
               ),
-            ),
-
-            // --- SEARCH BAR ---
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                  border: Border.all(color: Colors.grey.shade300),
-                ),
-                child: TextField(
-                  onChanged: (value) => _runFilter(value),
-                  decoration: const InputDecoration(
-                    hintText: "Cari bahan......",
-                    prefixIcon: Icon(Icons.search, color: Colors.grey),
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.symmetric(vertical: 14),
-                  ),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 10),
-
-            // --- LIST CONTENT ATAU EMPTY STATE ---
-            Expanded(
-              child: _foundIngredients.isNotEmpty
-                  ? _buildIngredientList()
-                  : _buildEmptyState(),
-            ),
-
-            // --- BOTTOM BUTTON ---
-            // Hanya muncul jika list tidak kosong (atau sesuai kebutuhan desain)
-            if (_foundIngredients.isNotEmpty)
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, -4),
-                    ),
-                  ],
-                ),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      // Aksi Lanjut
-                      print("Lanjut dengan $_selectedCount bahan");
-                      Navigator.pop(context, true); // Kembali ke dapur
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(
-                        0xFF38A169,
-                      ), // Warna Hijau NextDish
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: Text(
-                      "Lanjut ($_selectedCount bahan)",
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    flex: 1,
+                    child: TextField(
+                      controller: qtyCtrl,
+                      keyboardType: TextInputType.number,
+                      autofocus: true,
+                      decoration: InputDecoration(
+                        labelText: "Jumlah",
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12)),
                       ),
                     ),
                   ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 1,
+                    child: TextField(
+                      controller: unitCtrl,
+                      decoration: InputDecoration(
+                        labelText: "Satuan",
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context); // Tutup Dialog
+                    _saveIngredient(item['name']!, qtyCtrl.text, unitCtrl.text);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF38A169),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text("Simpan",
+                      style: TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.bold)),
                 ),
               ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  // WIDGET: List Bahan
-  Widget _buildIngredientList() {
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      itemCount: _foundIngredients.length,
-      itemBuilder: (context, index) {
-        final ingredient = _foundIngredients[index];
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border.all(color: Colors.grey.shade200),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: CheckboxListTile(
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 4,
-            ),
-            activeColor: const Color(0xFF38A169),
-            checkboxShape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(4),
-            ),
-            value: ingredient.isSelected,
-            onChanged: (bool? value) {
-              setState(() {
-                // Kita update object aslinya di _allIngredients juga
-                // Agar counter tetap benar meski sedang difilter
-                final originalIndex = _allIngredients.indexWhere(
-                  (item) => item.id == ingredient.id,
-                );
-                if (originalIndex != -1) {
-                  _allIngredients[originalIndex].isSelected = value ?? false;
-                }
-              });
-            },
-            title: Row(
-              children: [
-                // Gambar Bahan (Placeholder Icon jika aset belum ada)
-                Image.asset(
-                  ingredient.imagePath,
-                  width: 40,
-                  height: 40,
-                  errorBuilder: (context, error, stackTrace) => const Icon(
-                    Icons.fastfood,
-                    size: 40,
-                    color: Colors.orange,
-                  ),
-                ),
-                const SizedBox(width: 12),
+  @override
+  Widget build(BuildContext context) {
+    // Filter pencarian
+    final filteredList = _catalog.where((item) {
+      return item['name']!.toLowerCase().contains(_keyword.toLowerCase());
+    }).toList();
 
-                // Nama Bahan
-                Expanded(
-                  child: Text(
-                    ingredient.name,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
+    return Scaffold(
+      backgroundColor: const Color(0xFFFAFAFA),
+      appBar: AppBar(
+        title: const Text("Pilih Bahan",
+            style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: Column(
+        children: [
+          // SEARCH BAR
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: TextField(
+              controller: _searchController,
+              onChanged: (val) => setState(() => _keyword = val),
+              decoration: InputDecoration(
+                hintText: "Cari bahan (misal: Ayam)...",
+                prefixIcon: const Icon(Icons.search),
+                filled: true,
+                fillColor: Colors.white,
+                contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30),
+                  borderSide: BorderSide.none,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+              ),
+            ),
+          ),
+
+          // GRID BAHAN
+          Expanded(
+            child: filteredList.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.search_off,
+                            size: 60, color: Colors.grey),
+                        const SizedBox(height: 10),
+                        Text("Tidak ditemukan '$_keyword'",
+                            style: const TextStyle(color: Colors.grey)),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            widget
+                                .onManualInputRequest(); // Balik ke manual input
+                          },
+                          child: const Text("Input Manual Saja",
+                              style: TextStyle(color: Color(0xFF38A169))),
+                        )
+                      ],
                     ),
+                  )
+                : GridView.builder(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 3, // 3 Kolom
+                      childAspectRatio: 0.85,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                    ),
+                    itemCount: filteredList.length,
+                    itemBuilder: (context, index) {
+                      final item = filteredList[index];
+                      return GestureDetector(
+                        onTap: () => _showQuantityDialog(item),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: Colors.grey.shade200),
+                            boxShadow: [
+                              BoxShadow(
+                                  color: Colors.black.withOpacity(0.03),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2))
+                            ],
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFE8F5E9),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Image.asset(
+                                  _getImageAsset(item['name']!),
+                                  height: 32,
+                                  width: 32,
+                                  errorBuilder: (c, e, s) => const Icon(
+                                      Icons.restaurant,
+                                      color: Color(0xFF38A169),
+                                      size: 30),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                item['name']!,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold, fontSize: 13),
+                              ),
+                              Text(
+                                item['category']!,
+                                style: TextStyle(
+                                    fontSize: 10, color: Colors.grey.shade500),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
                   ),
-                ),
-
-                // Icon Centang Hijau (Badge) di kanan sesuai desain
-                const Icon(
-                  Icons.check_circle,
-                  color: Color(0xFF63B685),
-                  size: 24,
-                ),
-              ],
-            ),
-            controlAffinity:
-                ListTileControlAffinity.leading, // Checkbox di kiri
           ),
-        );
-      },
-    );
-  }
-
-  // WIDGET: Empty State (Bahan Tidak Ditemukan)
-  Widget _buildEmptyState() {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        // Gambar Sedih
-        Image.asset(
-          'assets/images/icons/sad.png', // Pastikan aset ini ada
-          height: 100,
-          errorBuilder: (context, error, stackTrace) => const Icon(
-            Icons.sentiment_dissatisfied,
-            size: 100,
-            color: Colors.amber,
-          ),
-        ),
-        const SizedBox(height: 20),
-
-        const Text(
-          "Bahan tidak ditemukan",
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF333333),
-          ),
-        ),
-        const SizedBox(height: 8),
-
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 50),
-          child: Text(
-            "Tambahkan bahan secara manual ke dapur kamu",
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.grey, fontSize: 14),
-          ),
-        ),
-
-        const SizedBox(height: 30),
-
-        // Tombol Tambah Manual
-        SizedBox(
-          width: 250,
-          height: 45,
-          child: ElevatedButton(
-            onPressed: () {
-              // Jika tombol ini ditekan, kita bisa trigger modal manual
-              if (widget.onManualInputRequest != null) {
-                Navigator.pop(context); // Tutup halaman search dulu
-                widget.onManualInputRequest!(); // Panggil fungsi buka modal
-              } else {
-                // Fallback jika tidak ada callback (opsional)
-                print("Buka manual input");
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF38A169),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: const Text(
-              "Tambah Bahan Manual",
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
