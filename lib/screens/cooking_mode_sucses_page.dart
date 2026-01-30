@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:nextdish_app/main_scaffold.dart';
-import 'home_page.dart';
 
 class CookingModeSuccessPage extends StatelessWidget {
   final String recipeName;

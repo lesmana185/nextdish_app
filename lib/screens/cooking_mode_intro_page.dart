@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'cooking_mode_steps_page.dart';
-import 'home_page.dart';
 
 class CookingModeIntroPage extends StatelessWidget {
   // Terima Data Resep dari Halaman Sebelumnya

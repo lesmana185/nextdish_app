@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../services/ai_recipe_services.dart'; // Pastikan nama file service benar
-import 'recipe_search_page.dart'; // Pastikan nama file result benar
+import '../services/ai_recipe_services.dart';
+import 'recipe_search_page.dart'; // Pastikan import ini mengarah ke file result yang benar
 
 class SearchLoadingPage extends StatefulWidget {
   const SearchLoadingPage({super.key});
@@ -17,28 +17,35 @@ class _SearchLoadingPageState extends State<SearchLoadingPage> {
   }
 
   Future<void> _startCooking() async {
+    // Tambah delay dikit biar animasi loading-nya sempat kelihatan (UX)
+    await Future.delayed(const Duration(seconds: 2));
+
     try {
-      // 1. Panggil Service AI
       final aiService = AiRecipeService();
 
-      // 2. Minta AI membuat resep
-      final String resepAsli = await aiService.generateRecipeFromKitchen();
+      // PERBAIKAN DI SINI:
+      // Tipe datanya sekarang Map<String, dynamic>, BUKAN String lagi.
+      final Map<String, dynamic> resepAsli =
+          await aiService.generateRecipeFromKitchen();
 
       if (!mounted) return;
 
-      // 3. Pindah ke Halaman Hasil (Replacement agar user gabisa back ke loading)
+      // Pindah ke Halaman Hasil
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
+          // RecipeResultPage sekarang menerima Map, jadi langsung pas
           builder: (context) => RecipeResultPage(recipeContent: resepAsli),
         ),
       );
     } catch (e) {
-      // Jika Error (Misal koneksi putus), Balik ke Home dan kasih tau user
+      // Jika Error, Balik ke Home
       if (mounted) {
-        Navigator.pop(context); // Kembali ke halaman sebelumnya
+        Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Gagal memuat resep: $e")),
+          SnackBar(
+              content: Text("Gagal memuat resep: $e"),
+              backgroundColor: Colors.red),
         );
       }
     }
@@ -50,7 +57,7 @@ class _SearchLoadingPageState extends State<SearchLoadingPage> {
       backgroundColor: const Color(0xFF63B685), // Hijau NextDish
       body: SafeArea(
         child: Container(
-          width: double.infinity, // Pastikan konten di tengah secara horizontal
+          width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -86,7 +93,7 @@ class _SearchLoadingPageState extends State<SearchLoadingPage> {
 
               // GAMBAR ROBOT
               Image.asset(
-                'assets/images/illustrasi/robotr_chef.png', // Pastikan aset ini ada
+                'assets/images/illustrasi/robotr_chef.png',
                 height: 250,
                 errorBuilder: (context, error, stackTrace) =>
                     const Icon(Icons.smart_toy, size: 100, color: Colors.white),
