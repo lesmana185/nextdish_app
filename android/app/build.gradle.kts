@@ -1,7 +1,6 @@
 plugins {
     id("com.android.application")
     id("kotlin-android")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
 
@@ -20,10 +19,7 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.example.nextdish_app"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
@@ -32,13 +28,26 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
+            // Menggunakan debug key untuk sementara (sesuai kode asli Anda)
             signingConfig = signingConfigs.getByName("debug")
+            
+            // --- PERBAIKAN 1: Konfigurasi ProGuard/R8 ---
+            // Mengaktifkan minification (pengecilan kode)
+            isMinifyEnabled = true 
+            // Mengaktifkan penyusutan resource
+            isShrinkResources = true 
+            // Memberitahu R8 untuk membaca file aturan proguard
+            proguardFiles(getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro")
         }
     }
 }
 
 flutter {
     source = "../.."
+}
+
+// --- PERBAIKAN 2: Menambahkan Dependency Manual ---
+dependencies {
+    // Menambahkan okhttp3 agar R8 tidak error karena kelas hilang
+    implementation("com.squareup.okhttp3:okhttp:4.9.3")
 }
