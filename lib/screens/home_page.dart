@@ -1,4 +1,4 @@
-import 'dart:async'; // WAJIB ADA untuk StreamSubscription
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -10,10 +10,13 @@ import 'chat_ai_page.dart';
 import 'cooking_mode_steps_page.dart';
 import 'mykitchen_page.dart';
 import 'recipe_detail_page.dart';
-import 'compost_landing_page.dart'; // <--- IMPORT BARU
+import 'compost_landing_page.dart';
+import 'search_loading_page.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  final VoidCallback? onSwitchToKitchen;
+
+  const HomePage({super.key, this.onSwitchToKitchen});
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -22,27 +25,22 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   String _userName = "Chef";
   String? _avatarUrl;
-  List<Map<String, dynamic>> _favorites = [];
   Map<String, String> _adminImages = {};
 
-  // Variabel untuk memantau perubahan akun (Ganti foto/nama)
   late final StreamSubscription<AuthState> _authSubscription;
 
   @override
   void initState() {
     super.initState();
     _loadUserProfile();
-    _loadFavorites();
     _loadAdminImages();
 
-    // --- MATA-MATA (LISTENER) ---
     _authSubscription =
         Supabase.instance.client.auth.onAuthStateChange.listen((data) {
       final event = data.event;
       if (event == AuthChangeEvent.userUpdated ||
-          event == AuthChangeEvent.tokenRefreshed ||
           event == AuthChangeEvent.signedIn) {
-        _loadUserProfile(); // Refresh data user di Home
+        _loadUserProfile();
       }
     });
   }
@@ -53,7 +51,18 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
-  void refreshFavorites() => _loadFavorites();
+  // --- 1. STREAM FAVORIT (REAL-TIME FIX) ---
+  Stream<List<Map<String, dynamic>>> _getFavoritesStream() {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return const Stream.empty();
+
+    // Mengambil stream data favorit secara real-time
+    return Supabase.instance.client
+        .from('favorite_recipes')
+        .stream(primaryKey: ['id'])
+        .eq('user_id', user.id)
+        .order('created_at', ascending: false);
+  }
 
   Future<void> _loadUserProfile() async {
     final user = Supabase.instance.client.auth.currentUser;
@@ -63,225 +72,34 @@ class _HomePageState extends State<HomePage> {
           _userName = user.userMetadata?['full_name'] ??
               user.email?.split('@')[0] ??
               "Chef";
-
-          // Trik timestamp agar gambar refresh
           String? url = user.userMetadata?['avatar_url'];
-          if (url != null) {
-            _avatarUrl = "$url?t=${DateTime.now().millisecondsSinceEpoch}";
-          } else {
-            _avatarUrl = null;
-          }
+          _avatarUrl = url != null
+              ? "$url?t=${DateTime.now().millisecondsSinceEpoch}"
+              : null;
         });
       }
-    }
-  }
-
-  Future<void> _loadFavorites() async {
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) return;
-    try {
-      final response = await Supabase.instance.client
-          .from('favorite_recipes')
-          .select('recipe_json')
-          .eq('user_id', user.id)
-          .order('created_at', ascending: false);
-      if (mounted) {
-        setState(() {
-          _favorites = List<Map<String, dynamic>>.from(
-              response.map((e) => e['recipe_json']));
-        });
-      }
-    } catch (e) {
-      // Silent error
     }
   }
 
   Future<void> _loadAdminImages() async {
     try {
-      final response = await Supabase.instance.client
+      final Map<String, String> tempMap = {};
+      final resMenu = await Supabase.instance.client
           .from('food_gallery')
-          .select('food_name, image_url')
-          .limit(50);
-      final Map<String, String> imageMap = {};
-      for (var item in response) {
-        imageMap[item['food_name'].toString().toLowerCase()] =
-            item['image_url'];
+          .select('food_name, image_url');
+      for (var item in resMenu) {
+        tempMap[item['food_name'].toString().toLowerCase()] = item['image_url'];
       }
-      if (mounted) setState(() => _adminImages = imageMap);
-    } catch (e) {
-      // Silent error
-    }
+      if (mounted) setState(() => _adminImages = tempMap);
+    } catch (e) {/* Silent */}
   }
 
-  // --- 1. FITUR LANJUT MASAK ---
-  Future<void> _resumeCookingSession() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String? lastRecipeString = prefs.getString('last_cooked_recipe');
-
-    if (lastRecipeString != null) {
-      try {
-        final Map<String, dynamic> recipeData = jsonDecode(lastRecipeString);
-        final String name = recipeData['nama'] ?? "Masakan";
-        final List<dynamic> steps = recipeData['cara'] ?? [];
-
-        if (steps.isEmpty) throw Exception("Data langkah kosong");
-
-        if (mounted) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => CookingModeStepsPage(
-                recipeName: name,
-                steps: steps,
-              ),
-            ),
-          );
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Data sesi rusak, pilih resep baru.")),
-          );
-        }
-      }
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Belum ada sesi masak aktif. Pilih resep dulu!"),
-            backgroundColor: Colors.orange,
-          ),
-        );
-      }
-    }
-  }
-
-  // --- 2. FITUR ATUR PORSI ---
-  Future<void> _openLastRecipeDetail() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String? lastRecipeString = prefs.getString('last_cooked_recipe');
-
-    if (lastRecipeString != null) {
-      try {
-        final Map<String, dynamic> recipeData = jsonDecode(lastRecipeString);
-
-        if (mounted) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => RecipeDetailPage(recipeData: recipeData),
-            ),
-          ).then((_) => _loadFavorites());
-        }
-      } catch (e) {
-        debugPrint("Error decoding recipe: $e");
-      }
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Belum ada resep terakhir. Cari resep dulu ya!"),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
-      }
-    }
-  }
-
-  // --- 3. FITUR COMPOSITE (SEKARANG SUDAH AKTIF) ---
-  void _openCompostAssistant() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const CompostLandingPage()),
-    ).then((_) {
-      // Refresh home/dapur info kalau user balik setelah hapus sampah
-      _loadFavorites();
-    });
-  }
-
-  Future<void> _onCariResepPressed() async {
-    showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const Center(
-            child: CircularProgressIndicator(color: Color(0xFF63B685))));
-    try {
-      final aiService = AiRecipeService();
-      final jsonResult = await aiService.generateRecipeFromKitchen();
-      if (mounted) Navigator.pop(context);
-      if (mounted) {
-        Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) =>
-                        RecipeResultPage(recipeContent: jsonResult)))
-            .then((_) => _loadFavorites());
-      }
-    } catch (e) {
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text("Gagal: $e")));
-      }
-    }
-  }
-
-  // --- LOGIKA GAMBAR ---
-  Widget _buildRecipeImage(String title) {
+  String _findBestImage(String title) {
     final t = title.toLowerCase();
-
-    String? adminUrl;
     for (var key in _adminImages.keys) {
-      if (t.contains(key)) {
-        adminUrl = _adminImages[key];
-        break;
-      }
+      if (t.contains(key)) return _adminImages[key]!;
     }
-    if (adminUrl != null) {
-      return Image.network(adminUrl,
-          width: double.infinity,
-          fit: BoxFit.cover,
-          errorBuilder: (c, e, s) => _buildFallbackImage());
-    }
-
-    String? localAsset;
-    if (t.contains('sate'))
-      localAsset = 'assets/images/resep/sate.jpg';
-    else if (t.contains('gudeg'))
-      localAsset = 'assets/images/resep/gudeg.jpg';
-    else if (t.contains('soto'))
-      localAsset = 'assets/images/resep/soto.jpg';
-    else if (t.contains('nasi goreng'))
-      localAsset = 'assets/images/resep/nasigoreng.jpg';
-    else if (t.contains('nasi liwet'))
-      localAsset = 'assets/images/resep/nasiliwet.jpg';
-    else if (t.contains('nasi'))
-      localAsset = 'assets/images/resep/nasi.jpg';
-    else if (t.contains('ayam'))
-      localAsset = 'assets/images/resep/ayam.jpg';
-    else if (t.contains('ikan') || t.contains('lele'))
-      localAsset = 'assets/images/resep/ikan.jpg';
-
-    if (localAsset != null) {
-      return Image.asset(localAsset,
-          width: double.infinity,
-          fit: BoxFit.cover,
-          errorBuilder: (c, e, s) => _buildFallbackImage());
-    }
-
-    return _buildFallbackImage();
-  }
-
-  Widget _buildFallbackImage() {
-    return Container(
-      color: Colors.grey.shade100,
-      child: Center(
-        child: Image.asset('assets/images/home/logosmall.png',
-            height: 40,
-            errorBuilder: (c, e, s) =>
-                const Icon(Icons.restaurant, color: Colors.green)),
-      ),
-    );
+    return 'assets/images/home/bannerfood.png';
   }
 
   @override
@@ -295,10 +113,7 @@ class _HomePageState extends State<HomePage> {
               context, MaterialPageRoute(builder: (_) => const ChatAIPage())),
           backgroundColor: Colors.white,
           elevation: 4,
-          icon: Image.asset('assets/images/home/logochat.png',
-              height: 24,
-              errorBuilder: (c, e, s) =>
-                  const Icon(Icons.chat, color: Colors.green)),
+          icon: const Icon(Icons.chat_bubble_outline, color: Color(0xFF63B685)),
           label: const Text("Chat AI",
               style: TextStyle(
                   color: Color(0xFF63B685), fontWeight: FontWeight.bold)),
@@ -314,7 +129,7 @@ class _HomePageState extends State<HomePage> {
             const Text("Resep Favorit Kamu ❤️",
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
-            _buildFavoriteSlider(),
+            _buildFavoriteSlider(), // Menggunakan StreamBuilder di dalam sini
             const SizedBox(height: 20),
             _buildKitchenInfo(),
             const SizedBox(height: 24),
@@ -337,7 +152,6 @@ class _HomePageState extends State<HomePage> {
             CircleAvatar(
               radius: 26,
               backgroundColor: Colors.grey.shade200,
-              // FOTO PROFIL DINAMIS
               backgroundImage: _avatarUrl != null
                   ? NetworkImage(_avatarUrl!)
                   : const AssetImage('assets/images/home/profile.png')
@@ -361,56 +175,80 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // --- 2. BUILDER FAVORIT DENGAN STREAM ---
   Widget _buildFavoriteSlider() {
-    if (_favorites.isEmpty) {
-      return Container(
-        height: 120,
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.grey.shade200),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
-            Icon(Icons.favorite_border, color: Colors.grey, size: 30),
-            SizedBox(height: 8),
-            Text("Belum ada resep favorit.\nYuk cari & simpan resep!",
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey, fontSize: 12)),
-          ],
-        ),
-      );
-    }
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: _getFavoritesStream(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const SizedBox(
+            height: 180,
+            child: Center(
+                child: CircularProgressIndicator(color: Color(0xFF63B685))),
+          );
+        }
 
-    return SizedBox(
-      height: 180,
-      child: PageView.builder(
-        controller: PageController(viewportFraction: 0.9),
-        itemCount: _favorites.length,
-        itemBuilder: (context, index) {
-          final resep = _favorites[index];
-          return Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: GestureDetector(
-              onTap: () {
-                Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) =>
-                                RecipeDetailPage(recipeData: resep)))
-                    .then((_) => _loadFavorites());
-              },
-              child: _buildHeroCard(resep),
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return Container(
+            height: 120,
+            width: double.infinity,
+            decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.grey.shade200)),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: const [
+                Icon(Icons.favorite_border, color: Colors.grey, size: 30),
+                SizedBox(height: 8),
+                Text("Belum ada resep favorit.\nYuk cari & simpan resep!",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.grey, fontSize: 12)),
+              ],
             ),
           );
-        },
-      ),
+        }
+
+        final favorites = snapshot.data!;
+
+        return SizedBox(
+          height: 180,
+          child: PageView.builder(
+            controller: PageController(viewportFraction: 0.9),
+            itemCount: favorites.length,
+            itemBuilder: (context, index) {
+              final favItem = favorites[index];
+              final resep = favItem['recipe_json'];
+              final String imageUrl =
+                  favItem['image_url'] ?? ""; // Ambil image dari DB
+
+              return Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => RecipeDetailPage(
+                          recipeData: resep,
+                          imageUrl: imageUrl,
+                        ),
+                      ),
+                    );
+                  },
+                  child: _buildHeroCard(resep, imageUrl),
+                ),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildHeroCard(Map<String, dynamic> resep) {
+  Widget _buildHeroCard(Map<String, dynamic> resep, String imageUrl) {
+    final bool isNetwork = imageUrl.startsWith('http');
+
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFF63B685),
@@ -424,20 +262,24 @@ class _HomePageState extends State<HomePage> {
       ),
       child: Stack(
         children: [
+          // Info Text
           Padding(
             padding: const EdgeInsets.all(24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(resep['nama'] ?? "Resep",
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        height: 1.2)),
+                SizedBox(
+                  width: 160,
+                  child: Text(resep['nama'] ?? "Resep",
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          height: 1.2)),
+                ),
                 const SizedBox(height: 8),
                 Row(
                   children: [
@@ -464,6 +306,7 @@ class _HomePageState extends State<HomePage> {
               ],
             ),
           ),
+          // Gambar di Sebelah Kanan
           Positioned(
             right: 0,
             bottom: 0,
@@ -472,7 +315,15 @@ class _HomePageState extends State<HomePage> {
             child: ClipRRect(
               borderRadius:
                   const BorderRadius.horizontal(right: Radius.circular(24)),
-              child: _buildRecipeImage(resep['nama'] ?? ""),
+              child: isNetwork
+                  ? Image.network(imageUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (c, e, s) =>
+                          Container(color: Colors.white12))
+                  : Image.asset(imageUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (c, e, s) =>
+                          Container(color: Colors.white12)),
             ),
           ),
         ],
@@ -482,9 +333,14 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildKitchenInfo() {
     return GestureDetector(
-      onTap: () => Navigator.push(
-              context, MaterialPageRoute(builder: (_) => const MyKitchenPage()))
-          .then((_) => _loadFavorites()),
+      onTap: () {
+        if (widget.onSwitchToKitchen != null) {
+          widget.onSwitchToKitchen!();
+        } else {
+          Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const MyKitchenPage()));
+        }
+      },
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -528,12 +384,10 @@ class _HomePageState extends State<HomePage> {
         const SizedBox(height: 12),
         Row(children: [
           Expanded(
-              child: _buildActionButton("Atur Porsi\n(Resep Terakhir)",
-                  Icons.balance, const Color(0xFFEF9A9A), Colors.red.shade900,
+              child: _buildActionButton("Atur Porsi\n(Resep)", Icons.balance,
+                  const Color(0xFFEF9A9A), Colors.red.shade900,
                   onTap: _openLastRecipeDetail)),
           const SizedBox(width: 12),
-
-          // --- TOMBOL COMPOSITE SUDAH AKTIF ---
           Expanded(
               child: _buildActionButton("Composite\nAssistant", Icons.recycling,
                   const Color(0xFFA5D6A7), Colors.green.shade900,
@@ -569,5 +423,48 @@ class _HomePageState extends State<HomePage> {
         ]),
       ),
     );
+  }
+
+  // --- LOGIC FUNCTIONS ---
+  Future<void> _resumeCookingSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? lastRecipeString = prefs.getString('last_cooked_recipe');
+    if (lastRecipeString != null) {
+      final Map<String, dynamic> recipeData = jsonDecode(lastRecipeString);
+      if (mounted) {
+        Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => CookingModeStepsPage(
+                    recipeName: recipeData['nama'] ?? "Masakan",
+                    steps: recipeData['cara'] ?? [])));
+      }
+    }
+  }
+
+  Future<void> _openLastRecipeDetail() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? lastRecipeString = prefs.getString('last_cooked_recipe');
+    if (lastRecipeString != null) {
+      final Map<String, dynamic> recipeData = jsonDecode(lastRecipeString);
+      final String img = _findBestImage(recipeData['nama'] ?? "");
+      if (mounted) {
+        Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) =>
+                    RecipeDetailPage(recipeData: recipeData, imageUrl: img)));
+      }
+    }
+  }
+
+  void _openCompostAssistant() {
+    Navigator.push(context,
+        MaterialPageRoute(builder: (context) => const CompostLandingPage()));
+  }
+
+  Future<void> _onCariResepPressed() async {
+    Navigator.push(
+        context, MaterialPageRoute(builder: (_) => const SearchLoadingPage()));
   }
 }

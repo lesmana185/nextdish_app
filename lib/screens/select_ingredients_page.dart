@@ -14,86 +14,80 @@ class _SelectIngredientsPageState extends State<SelectIngredientsPage> {
   final TextEditingController _searchController = TextEditingController();
   String _keyword = "";
 
-  // --- DATABASE KATALOG BAHAN (HARDCODED) ---
-  // Ini daftar bahan umum biar user gampang milih
-  final List<Map<String, String>> _catalog = [
-    {'name': 'Telur', 'unit': 'Butir', 'category': 'Protein'},
-    {'name': 'Ayam', 'unit': 'Kg', 'category': 'Protein'},
-    {'name': 'Daging Sapi', 'unit': 'Kg', 'category': 'Protein'},
-    {'name': 'Ikan', 'unit': 'Ekor', 'category': 'Protein'},
-    {'name': 'Tahu', 'unit': 'Potong', 'category': 'Protein'},
-    {'name': 'Tempe', 'unit': 'Papan', 'category': 'Protein'},
-    {'name': 'Udang', 'unit': 'Kg', 'category': 'Protein'},
-    {'name': 'Wortel', 'unit': 'Buah', 'category': 'Sayur'},
-    {'name': 'Bayam', 'unit': 'Ikat', 'category': 'Sayur'},
-    {'name': 'Kangkung', 'unit': 'Ikat', 'category': 'Sayur'},
-    {'name': 'Brokoli', 'unit': 'Bonggol', 'category': 'Sayur'},
-    {'name': 'Tomat', 'unit': 'Buah', 'category': 'Sayur'},
-    {'name': 'Kentang', 'unit': 'Kg', 'category': 'Sayur'},
-    {'name': 'Bawang Merah', 'unit': 'Siung', 'category': 'Bumbu'},
-    {'name': 'Bawang Putih', 'unit': 'Siung', 'category': 'Bumbu'},
-    {'name': 'Cabai', 'unit': 'Buah', 'category': 'Bumbu'},
-    {'name': 'Beras', 'unit': 'Kg', 'category': 'Karbo'},
-    {'name': 'Mie Instan', 'unit': 'Bungkus', 'category': 'Karbo'},
-    {'name': 'Roti Tawar', 'unit': 'Lembar', 'category': 'Karbo'},
-    {'name': 'Susu', 'unit': 'Liter', 'category': 'Lainnya'},
-    {'name': 'Keju', 'unit': 'Balok', 'category': 'Lainnya'},
-    {'name': 'Minyak Goreng', 'unit': 'Liter', 'category': 'Lainnya'},
-    {'name': 'Garam', 'unit': 'Sdt', 'category': 'Bumbu'},
-    {'name': 'Gula', 'unit': 'Sdm', 'category': 'Bumbu'},
-  ];
+  // List Bahan Kosong (Nanti diisi dari Supabase)
+  List<Map<String, dynamic>> _catalog = [];
+  bool _isLoading = true;
 
-  // Helper Gambar
-  String _getImageAsset(String name) {
-    final n = name.toLowerCase();
-    if (n.contains('telur')) return 'assets/images/ingredients/telur.png';
-    if (n.contains('ayam') || n.contains('daging'))
-      return 'assets/images/ingredients/ayam.png';
-    if (n.contains('susu')) return 'assets/images/ingredients/susu.png';
-    if (n.contains('keju')) return 'assets/images/ingredients/keju.png';
-    if (n.contains('nasi') || n.contains('beras'))
-      return 'assets/images/ingredients/nasi.png';
-    if (n.contains('wortel')) return 'assets/images/ingredients/wortel.png';
-    if (n.contains('roti')) return 'assets/images/ingredients/roti.png';
-    // Default fallback
-    return 'assets/images/ingredients/sayur.png';
+  @override
+  void initState() {
+    super.initState();
+    _fetchIngredients();
   }
 
-  // --- LOGIKA SIMPAN KE SUPABASE ---
-  Future<void> _saveIngredient(String name, String qty, String unit) async {
+  // --- 1. AMBIL DATA DARI SUPABASE (Fix: Koneksi ke Admin) ---
+  Future<void> _fetchIngredients() async {
+    try {
+      final response = await Supabase.instance.client
+          .from('ingredient_gallery') // Ambil dari tabel gallery
+          .select()
+          .order('name', ascending: true);
+
+      if (mounted) {
+        setState(() {
+          _catalog = List<Map<String, dynamic>>.from(response);
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error ambil bahan: $e");
+      // Jika error (misal internet mati), matikan loading biar gak muter terus
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  // --- 2. SIMPAN KE DAPUR USER (Fix: Simpan Image URL) ---
+  Future<void> _saveIngredient(
+      Map<String, dynamic> item, String qty, String unit) async {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
 
     try {
       await Supabase.instance.client.from('user_ingredients').insert({
         'user_id': user.id,
-        'name': name,
+        'name': item['name'],
         'quantity': "$qty $unit",
         'status': 'Segar',
         'expiry_date':
             DateTime.now().add(const Duration(days: 7)).toIso8601String(),
+        // PENTING: Simpan link gambar agar di halaman Dapur muncul
+        'image_path': item['image_url'],
       });
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("$name berhasil ditambahkan! ✅"),
+            content: Text("${item['name']} berhasil ditambahkan! ✅"),
+            backgroundColor: const Color(0xFF38A169),
             duration: const Duration(seconds: 1),
             behavior: SnackBarBehavior.floating,
-            backgroundColor: const Color(0xFF38A169),
           ),
         );
       }
     } catch (e) {
       debugPrint("Gagal simpan: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Gagal menyimpan bahan ❌")));
+      }
     }
   }
 
   // --- DIALOG INPUT JUMLAH ---
-  void _showQuantityDialog(Map<String, String> item) {
+  void _showQuantityDialog(Map<String, dynamic> item) {
     final TextEditingController qtyCtrl = TextEditingController(text: "1");
+    // Ambil satuan dari database, kalau kosong default 'Pcs'
     final TextEditingController unitCtrl =
-        TextEditingController(text: item['unit']);
+        TextEditingController(text: item['unit'] ?? 'Pcs');
 
     showModalBottomSheet(
       context: context,
@@ -114,11 +108,27 @@ class _SelectIngredientsPageState extends State<SelectIngredientsPage> {
             children: [
               Row(
                 children: [
-                  Image.asset(_getImageAsset(item['name']!), height: 40),
+                  // Fix: Tampilkan Gambar Kecil dari URL
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.network(
+                      item['image_url'] ?? '',
+                      width: 50,
+                      height: 50,
+                      fit: BoxFit.cover,
+                      errorBuilder: (c, e, s) =>
+                          const Icon(Icons.image, size: 40, color: Colors.grey),
+                    ),
+                  ),
                   const SizedBox(width: 12),
-                  Text("Tambah ${item['name']}",
+                  Expanded(
+                    child: Text(
+                      "Tambah ${item['name']}",
                       style: const TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.bold)),
+                          fontSize: 18, fontWeight: FontWeight.bold),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 20),
@@ -157,15 +167,15 @@ class _SelectIngredientsPageState extends State<SelectIngredientsPage> {
                 height: 50,
                 child: ElevatedButton(
                   onPressed: () {
-                    Navigator.pop(context); // Tutup Dialog
-                    _saveIngredient(item['name']!, qtyCtrl.text, unitCtrl.text);
+                    Navigator.pop(context);
+                    _saveIngredient(item, qtyCtrl.text, unitCtrl.text);
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF38A169),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: const Text("Simpan",
+                  child: const Text("SIMPAN KE DAPUR",
                       style: TextStyle(
                           color: Colors.white, fontWeight: FontWeight.bold)),
                 ),
@@ -179,15 +189,16 @@ class _SelectIngredientsPageState extends State<SelectIngredientsPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Filter pencarian
+    // Filter Pencarian (Client Side)
     final filteredList = _catalog.where((item) {
-      return item['name']!.toLowerCase().contains(_keyword.toLowerCase());
+      final name = item['name'].toString().toLowerCase();
+      return name.contains(_keyword.toLowerCase());
     }).toList();
 
     return Scaffold(
       backgroundColor: const Color(0xFFFAFAFA),
       appBar: AppBar(
-        title: const Text("Pilih Bahan",
+        title: const Text("Pilih Bahan Online",
             style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
         backgroundColor: Colors.white,
         elevation: 0,
@@ -205,111 +216,137 @@ class _SelectIngredientsPageState extends State<SelectIngredientsPage> {
               controller: _searchController,
               onChanged: (val) => setState(() => _keyword = val),
               decoration: InputDecoration(
-                hintText: "Cari bahan (misal: Ayam)...",
+                hintText: "Cari bahan (misal: Bayam)...",
                 prefixIcon: const Icon(Icons.search),
                 filled: true,
                 fillColor: Colors.white,
                 contentPadding: const EdgeInsets.symmetric(vertical: 0),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(30),
-                  borderSide: BorderSide.none,
-                ),
+                    borderRadius: BorderRadius.circular(30),
+                    borderSide: BorderSide.none),
                 enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(30),
-                  borderSide: BorderSide(color: Colors.grey.shade300),
-                ),
+                    borderRadius: BorderRadius.circular(30),
+                    borderSide: BorderSide(color: Colors.grey.shade300)),
               ),
             ),
           ),
 
-          // GRID BAHAN
+          // CONTENT
           Expanded(
-            child: filteredList.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.search_off,
-                            size: 60, color: Colors.grey),
-                        const SizedBox(height: 10),
-                        Text("Tidak ditemukan '$_keyword'",
-                            style: const TextStyle(color: Colors.grey)),
-                        TextButton(
-                          onPressed: () {
-                            Navigator.pop(context);
-                            widget
-                                .onManualInputRequest(); // Balik ke manual input
-                          },
-                          child: const Text("Input Manual Saja",
-                              style: TextStyle(color: Color(0xFF38A169))),
-                        )
-                      ],
-                    ),
-                  )
-                : GridView.builder(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 3, // 3 Kolom
-                      childAspectRatio: 0.85,
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 12,
-                    ),
-                    itemCount: filteredList.length,
-                    itemBuilder: (context, index) {
-                      final item = filteredList[index];
-                      return GestureDetector(
-                        onTap: () => _showQuantityDialog(item),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: Colors.grey.shade200),
-                            boxShadow: [
-                              BoxShadow(
-                                  color: Colors.black.withOpacity(0.03),
-                                  blurRadius: 4,
-                                  offset: const Offset(0, 2))
-                            ],
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFE8F5E9),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Image.asset(
-                                  _getImageAsset(item['name']!),
-                                  height: 32,
-                                  width: 32,
-                                  errorBuilder: (c, e, s) => const Icon(
-                                      Icons.restaurant,
-                                      color: Color(0xFF38A169),
-                                      size: 30),
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                item['name']!,
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold, fontSize: 13),
-                              ),
-                              Text(
-                                item['category']!,
-                                style: TextStyle(
-                                    fontSize: 10, color: Colors.grey.shade500),
-                              ),
-                            ],
-                          ),
+            child: _isLoading
+                ? const Center(
+                    child: CircularProgressIndicator(
+                        color: Color(0xFF38A169))) // Loading Indicator
+                : filteredList.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.search_off,
+                                size: 60, color: Colors.grey),
+                            const SizedBox(height: 10),
+                            Text("Tidak ditemukan '$_keyword'",
+                                style: const TextStyle(color: Colors.grey)),
+                            TextButton(
+                              onPressed: () {
+                                Navigator.pop(context);
+                                widget
+                                    .onManualInputRequest(); // Tombol ke Manual
+                              },
+                              child: const Text("Input Manual Saja",
+                                  style: TextStyle(color: Color(0xFF38A169))),
+                            )
+                          ],
                         ),
-                      );
-                    },
-                  ),
+                      )
+                    : GridView.builder(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          childAspectRatio: 0.85,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                        ),
+                        itemCount: filteredList.length,
+                        itemBuilder: (context, index) {
+                          final item = filteredList[index];
+                          return GestureDetector(
+                            onTap: () => _showQuantityDialog(item),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: Colors.grey.shade200),
+                                boxShadow: [
+                                  BoxShadow(
+                                      color: Colors.black.withOpacity(0.03),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 2))
+                                ],
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  // GAMBAR DARI INTERNET (SUPABASE)
+                                  Container(
+                                    padding: const EdgeInsets.all(
+                                        2), // Padding tipis
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFE8F5E9),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: ClipOval(
+                                      child: Image.network(
+                                        item['image_url'] ?? '',
+                                        height: 50,
+                                        width: 50,
+                                        fit: BoxFit.cover,
+                                        // Loading: Tampilkan icon jam pasir
+                                        loadingBuilder: (c, child, progress) {
+                                          if (progress == null) return child;
+                                          return const SizedBox(
+                                              width: 50,
+                                              height: 50,
+                                              child: Icon(Icons.hourglass_empty,
+                                                  size: 20,
+                                                  color: Colors.grey));
+                                        },
+                                        // Error: Tampilkan icon makanan
+                                        errorBuilder: (c, e, s) => const Icon(
+                                            Icons.restaurant,
+                                            color: Color(0xFF38A169),
+                                            size: 30),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 4),
+                                    child: Text(
+                                      item['name'] ?? 'Tanpa Nama',
+                                      textAlign: TextAlign.center,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13),
+                                    ),
+                                  ),
+                                  Text(
+                                    item['category'] ?? 'Umum',
+                                    style: TextStyle(
+                                        fontSize: 10,
+                                        color: Colors.grey.shade500),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
           ),
         ],
       ),
